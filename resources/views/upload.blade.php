@@ -18,11 +18,9 @@
                         <p id="file-name-display" class="hidden rounded-lg py-16">testsheet.xlm</p>
                     </div>
                 </div>
-                <button type="submit">
-                    <x-primary-button class="float-right">
-                        Import
-                    </x-primary-button>
-                </button>
+                <x-primary-button class="float-right">
+                    Import
+                </x-primary-button>
             </form>
         </div>
     </div>

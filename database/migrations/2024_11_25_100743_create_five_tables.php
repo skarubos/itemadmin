@@ -20,7 +20,7 @@ return new class extends Migration
 
         Schema::create('tradings', function (Blueprint $table) {
             $table->id();
-            $table->integer('member_id');
+            $table->integer('member_code');
             $table->date('date');
             $table->integer('trading_type');
             $table->integer('amount');
@@ -45,7 +45,7 @@ return new class extends Migration
 
         Schema::create('depo_realtime', function (Blueprint $table) {
             $table->id();
-            $table->integer('member_id');
+            $table->integer('member_code');
             $table->unsignedBigInteger('product_id');
             $table->integer('amount');
             $table->timestamps();

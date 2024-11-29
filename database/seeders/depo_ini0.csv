@@ -1,4 +1,4 @@
-member_id,product_id,amount
+member_code,product_id,amount
 292,101,8
 292,102,12
 292,103,12

@@ -20,6 +20,11 @@ class UsersTableSeeder extends Seeder
                     'name_kana' => $data[1],
                     'member_code' => $data[2],
                     'phone_number' => $data[3],
+                    'depo_status' => $data[4],
+                    'sub_leader' => $data[5],
+                    'sub_number' => $data[6],
+                    'priority' => $data[7],
+                    'permission' => $data[8],
                 ]);
             }
             $firstline = false;

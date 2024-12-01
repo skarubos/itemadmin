@@ -3,7 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ExcelImportController;
-use App\Http\Controllers\DepoController;
+use App\Http\Controllers\HomeController;
 
 
 Route::get('/', function () {
@@ -22,8 +22,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    Route::get('/depo', [DepoController::class, 'depo'])->name('depo');
-    Route::get('/depo_detail/{member_code}', [DepoController::class, 'detail'])->name('detail');
+    Route::get('/depo', [HomeController::class, 'depo_home'])->name('depo_home');
+    Route::get('/depo_detail/{member_code}', [HomeController::class, 'depo_detail'])->name('depo_detail');
+    Route::get('/sales', [HomeController::class, 'sales_home'])->name('sales_home');
 });
 
 Route::post('/import', [ExcelImportController::class, 'import']);

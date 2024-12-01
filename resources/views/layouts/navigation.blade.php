@@ -17,7 +17,12 @@
                     </x-nav-link>
                 </div>
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('depo')" :active="request()->routeIs('depo')">
+                    <x-nav-link :href="route('sales_home')" :active="request()->routeIs('sales_home')">
+                        {{ __('Sales') }}
+                    </x-nav-link>
+                </div>
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('depo_home')" :active="request()->routeIs('depo_home')">
                         {{ __('Depo') }}
                     </x-nav-link>
                 </div>

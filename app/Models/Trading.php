@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Product extends Model
+class Trading extends Model
 {
     use HasFactory;
 
@@ -14,12 +14,7 @@ class Product extends Model
      *
      * @var string
      */
-    protected $table = 'products';
-
-    public function depoRealtimes()
-    {
-        return $this->hasMany(DepoRealtime::class, 'product_id');
-    }
+    protected $table = 'tradings';
 
     /**
      * 主キーのカラム名
@@ -34,8 +29,10 @@ class Product extends Model
      * @var array
      */
     protected $fillable = [
-        'name',
-        'product_type'
+        'member_code',
+        'date',
+        'trading_type',
+        'amount'
     ];
 
     /**
@@ -48,3 +45,4 @@ class Product extends Model
         'updated_at'
     ];
 }
+

@@ -25,6 +25,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/depo', [HomeController::class, 'depo_home'])->name('depo_home');
     Route::get('/depo_detail/{member_code}', [HomeController::class, 'depo_detail'])->name('depo_detail');
     Route::get('/sales', [HomeController::class, 'sales_home'])->name('sales_home');
+    Route::get('/refresh_sales', [HomeController::class, 'refresh_sales'])->name('refresh_sales');
+    Route::get('/sales_detail/{member_code}', [HomeController::class, 'sales_detail'])->name('sales_detail');
 });
 
 Route::post('/import', [ExcelImportController::class, 'import']);

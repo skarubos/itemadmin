@@ -7,15 +7,25 @@
             <p class="w-4/5 text-center text-lg font-bold leading-snug tracking-normal antialiased">
                 実績
             </p>
+            <a href="/refresh_sales">
+            <x-primary-button class="float-right hidden">
+                Refresh
+            </x-primary-button>
+            </a>
         </div>
         <div class="grid grid-cols-1 divide-y">
             @foreach($users as $user)
             <div class="py-2 font-sans text-2xl">
                 <a href="/sales_detail/{{ $user['member_code'] }}" class="flex justify-between">
-                    <div class="w-4/5">
+                    @if ($user['sub_leader'] != 0)
+                        <div class="">
+                            {{ $user['sub_now'] }}
+                        </div>
+                    @endif
+                    <div class="w-8/12">
                         {{ $user['name'] }}
                     </div>
-                    <div class="w-1/5 text-right">
+                    <div class="w-2/12 text-right">
                         {{ $user['sales'] }}
                     </div>
                 </a>

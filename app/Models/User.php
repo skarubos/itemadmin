@@ -48,4 +48,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    // Tradingsリレーションの追加
+    public function tradings() {
+        return $this->hasMany(Trading::class, 'member_code', 'member_code');
+    }
 }

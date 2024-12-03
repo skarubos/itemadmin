@@ -1,11 +1,15 @@
 <x-app-layout>
-<div class="py-6">
+<div class="pt-3 pb-8">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-    <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 px-5 shadow-sm bg-clip-border rounded-lg">
-        <p class="text-base mb-4">{{ $user->member_code }}</p>
-        <p class="text-xl font-bold mb-4">{{ $user->name }}</p>
+    <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 px-5 pb-8 shadow-sm bg-clip-border rounded-lg">
+        <p class="pt-6 pb-2 text-2xl font-bold text-center">{{ $user->name }}</p>
+        <div class="text-xl h-8 mb-2 text-center">
+            <p class="inline-block">{{ str_pad($user->member_code, 5, '0', STR_PAD_LEFT) }}</p>
+            <p class="inline-block ml-5">預け：{{ $user->depo_status }}</p>
+            <p class="inline-block ml-5">合計：{{ $user->sales }}</p>
+        </div>
         <table class="min-w-full border border-gray-200">
-            <thead class="bg-gray-200 dark:bg-gray-800 dark:text-gray-100">
+            <thead class="pt-5 bg-gray-200 dark:bg-gray-800 dark:text-gray-100">
                 <tr>
                     <th class="py-2 px-4 border-b">月</th>
                     <th class="py-2 px-4 border-b">セット</th>

@@ -12,20 +12,25 @@ class HomeController extends Controller
 {
 
     public function refresh_sales() {
-        // 【年間実績（年初からの累計セット数）を更新】
+        // 【最新注文&年間実績（年初からの累計セット数）を更新】
         
         $startOfYear = Carbon::now()->startOfYear();
         $users = User::all();
 
-        // 各ユーザーに対してループ処理を行う
         foreach ($users as $user) {
-            // ユーザーの取引実績を取得
-            $sales = Trading::where('member_code', $user->member_code)
-                            ->where('date', '>=', $startOfYear)
-                            ->whereIn('trading_type', [10, 11, 12, 20, 110, 111])
-                            ->sum('amount');
+            // 最新注文
+            $latest = Trading::where('member_code', $user->member_code)
+                        ->whereIn('trading_type', [10, 11, 12, 20, 110, 111])
+                        ->orderBy('date', 'DESC')
+                        ->select('id')
+                        ->first();
+            $user->latest_trade = $latest ? $latest->id : null;
             
-            // usersテーブルのsalesカラムを更新
+            // 年間実績
+            $sales = Trading::where('member_code', $user->member_code)
+                        ->where('date', '>=', $startOfYear)
+                        ->whereIn('trading_type', [10, 11, 12, 20, 110, 111])
+                        ->sum('amount');
             $user->sales = $sales;
             $user->save();
         }
@@ -50,18 +55,28 @@ class HomeController extends Controller
             $user->save();
         }
 
-        // sales_homeメソッドを実行
         return $this->sales_home();
     }
-
+    
     public function sales_home() {
         // depo_statusが0ではない行を取得
         $users = User::where('status', 1)
-            ->select('id', 'name', 'member_code', 'sales', 'sub_leader', 'sub_now')
+            ->select('id', 'name', 'member_code', 'sales', 'latest_trade', 'sub_leader', 'sub_now')
             ->orderBy('priority', 'ASC')
             ->get();
-        // ビューにデータを渡す
-        return view('sales-home', compact('users'));
+        // latest_tradeに基づいて各ユーザーの最新取引を取得
+        $latestTrades = [];
+        foreach ($users as $user) {
+            if ($user->latest_trade) {
+                $latest = Trading::where('id', $user->latest_trade)
+                    ->select('id', 'date', 'amount')
+                    ->first();
+                if ($latest) {
+                    $latestTrades[$user->id] = $latest;
+                }
+            }
+        }
+        return view('sales-home', compact('users', 'latestTrades'));
     }
 
     public function sales_detail($member_code){

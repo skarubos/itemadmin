@@ -17,7 +17,8 @@ return new class extends Migration
             $table->unsignedInteger('member_code')->unique()->after('name_kana');
             $table->string('phone_number', 11)->after('member_code');
             $table->unsignedInteger('sales')->default(0)->after('phone_number');
-            $table->unsignedInteger('depo_status')->default(0)->after('sales');
+            $table->unsignedInteger('latest_trade')->nullable()->after('sales');
+            $table->unsignedInteger('depo_status')->default(0)->after('latest_trade');
             $table->unsignedInteger('sub_leader')->default(0)->after('depo_status');
             $table->unsignedInteger('sub_number')->default(0)->after('sub_leader');
             $table->unsignedInteger('sub_now')->default(0)->after('sub_number');
@@ -40,6 +41,7 @@ return new class extends Migration
             $table->dropColumn('member_code');
             $table->dropColumn('phone_number');
             $table->dropColumn('sales');
+            $table->dropColumn('latest_trade');
             $table->dropColumn('depo_status');
             $table->dropColumn('sub_leader');
             $table->dropColumn('sub_number');

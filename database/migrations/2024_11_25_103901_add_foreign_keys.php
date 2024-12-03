@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::table('users', function (Blueprint $table) {
+            $table->foreign('latest_trade')->references('id')->on('tradings');
+        });
+
         Schema::table('tradings', function (Blueprint $table) {
             $table->foreign('member_code')->references('member_code')->on('users');
         });
@@ -28,6 +32,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropForeign(['latest_trade']);
+        });
+
         Schema::table('tradings', function (Blueprint $table) {
             $table->dropForeign(['member_code']);
         });

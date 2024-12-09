@@ -29,9 +29,10 @@ class Trading extends Model
      * @var array
      */
     protected $fillable = [
+        'check_no',
         'member_code',
         'date',
-        'trading_type',
+        'trade_type',
         'amount'
     ];
 

@@ -23,7 +23,7 @@ class TradeDetailsSeeder extends Seeder
         array_shift($csv);
 
         foreach ($csv as $row) {
-            $tradingId = $row[0];
+            $tradeId = $row[0];
             $productName = $row[1];
             $amount = $row[2];
 
@@ -32,7 +32,7 @@ class TradeDetailsSeeder extends Seeder
 
             // データをtrade_detailsテーブルに挿入
             DB::table('trade_details')->insert([
-                'trading_id' => $tradingId,
+                'trade_id' => $tradeId,
                 'product_id' => $productId,
                 'amount' => $amount,
             ]);

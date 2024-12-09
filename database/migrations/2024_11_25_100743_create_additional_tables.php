@@ -19,11 +19,20 @@ return new class extends Migration
             $table->timestamp('created_at')->default(DB::raw('CURRENT_TIMESTAMP'));
         });
 
+        Schema::create('trade_types', function (Blueprint $table) {
+            $table->increments('id');
+            $table->unsignedInteger('trade_type')->unique();
+            $table->string('name', 10);
+            $table->string('caption', 30);
+            $table->timestamp('created_at')->default(DB::raw('CURRENT_TIMESTAMP'));
+        });
+
         Schema::create('tradings', function (Blueprint $table) {
             $table->increments('id');
+            $table->unsignedInteger('check_no')->nullable();
             $table->unsignedInteger('member_code');
             $table->date('date');
-            $table->unsignedInteger('trading_type');
+            $table->unsignedInteger('trade_type');
             $table->integer('amount');
             $table->timestamp('updated_at')->default(DB::raw('CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP'));
             $table->timestamp('created_at')->default(DB::raw('CURRENT_TIMESTAMP'));
@@ -31,7 +40,7 @@ return new class extends Migration
 
         Schema::create('trade_details', function (Blueprint $table) {
             $table->increments('id');
-            $table->unsignedInteger('trading_id');
+            $table->unsignedInteger('trade_id');
             $table->unsignedInteger('product_id');
             $table->integer('amount');
             $table->timestamp('updated_at')->default(DB::raw('CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP'));
@@ -51,6 +60,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('products');
+        Schema::dropIfExists('trade_types');
         Schema::dropIfExists('tradings');
         Schema::dropIfExists('trade_details');
         Schema::dropIfExists('depo_realtime');

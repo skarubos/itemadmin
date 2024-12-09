@@ -11,7 +11,7 @@ class Depo_RealtimeTableSeeder extends Seeder
 {
     public function run(): void
     {
-        $file = fopen(database_path('seeders\depo_ini0.csv'), 'r');
+        $file = fopen(database_path('seeders\depo_realtime.csv'), 'r');
         $firstline = true;
         while (($data = fgetcsv($file, 1000, ",")) !== FALSE) {
             if (!$firstline) {

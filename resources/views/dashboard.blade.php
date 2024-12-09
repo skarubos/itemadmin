@@ -11,9 +11,11 @@
                 <div class="p-6 text-center text-gray-900 dark:text-gray-100">
                     {{ __("You're logged in!") }}
                 </div>
-                <x-primary-button class="">
-                    Refresh
-                </x-primary-button>
+                <a href="/refresh_sales">
+                    <x-primary-button class="px-10">
+                        Refresh
+                    </x-primary-button>
+                </a>
             </div>
         </div>
     </div>

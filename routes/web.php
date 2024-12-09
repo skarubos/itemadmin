@@ -27,8 +27,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales', [HomeController::class, 'sales_home'])->name('sales_home');
     Route::get('/refresh_sales', [HomeController::class, 'refresh_sales'])->name('refresh_sales');
     Route::get('/sales_detail/{member_code}', [HomeController::class, 'sales_detail'])->name('sales_detail');
+    Route::post('/upload_check', [ExcelImportController::class, 'upload_check'])->name('upload_check');
+    Route::post('/save', [ExcelImportController::class, 'save'])->name('save');
 });
-
-Route::post('/import', [ExcelImportController::class, 'import']);
 
 require __DIR__.'/auth.php';

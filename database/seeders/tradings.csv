@@ -1,4 +1,4 @@
-id,member_code,date,trading_type,amount
+id,member_code,date,trade_type,amount
 1,3851,2024-01-05,121,100
 2,292,2024-01-11,10,40
 3,3851,2024-01-31,111,60

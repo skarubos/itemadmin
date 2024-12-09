@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
         // ]);
         $this->call(UsersTableSeeder::class);
         $this->call(ProductsTableSeeder::class);
+        $this->call(TradeTypesSeeder::class);
         $this->call(Depo_RealtimeTableSeeder::class);
         $this->call(TradingsSeeder::class);
         $this->call(TradeDetailsSeeder::class);

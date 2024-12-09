@@ -29,6 +29,11 @@
 
             <!-- Page Content -->
             <main>
+                <!-- @if(session('success'))
+                    <div id="flash-message" class="block bg-green-500 text-white p-2 mb-4">
+                        {{ session('success') }}
+                    </div>
+                @endif -->
                 {{ $slot }}
             </main>
         </div>

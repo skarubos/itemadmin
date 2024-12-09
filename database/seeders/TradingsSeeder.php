@@ -19,7 +19,7 @@ class TradingsSeeder extends Seeder
                     'id' => $data[0],
                     'member_code' => $data[1],
                     'date' => $data[2],
-                    'trading_type' => $data[3],
+                    'trade_type' => $data[3],
                     'amount' => $data[4],
                 ]);
             }

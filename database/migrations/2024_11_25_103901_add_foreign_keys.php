@@ -17,10 +17,11 @@ return new class extends Migration
 
         Schema::table('tradings', function (Blueprint $table) {
             $table->foreign('member_code')->references('member_code')->on('users');
+            $table->foreign('trade_type')->references('trade_type')->on('trade_types');
         });
 
         Schema::table('trade_details', function (Blueprint $table) {
-            $table->foreign('trading_id')->references('id')->on('tradings');
+            $table->foreign('trade_id')->references('id')->on('tradings');
             $table->foreign('product_id')->references('id')->on('products');
         });
 
@@ -38,10 +39,11 @@ return new class extends Migration
 
         Schema::table('tradings', function (Blueprint $table) {
             $table->dropForeign(['member_code']);
+            $table->dropForeign(['trade_type']);
         });
 
         Schema::table('trade_details', function (Blueprint $table) {
-            $table->dropForeign(['trading_id']);
+            $table->dropForeign(['trade_id']);
             $table->dropForeign(['product_id']);
         });
 

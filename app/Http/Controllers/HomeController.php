@@ -20,7 +20,7 @@ class HomeController extends Controller
         foreach ($users as $user) {
             // 最新注文
             $latest = Trading::where('member_code', $user->member_code)
-                        ->whereIn('trading_type', [10, 11, 12, 20, 110, 111])
+                        ->whereIn('trade_type', [10, 11, 12, 20, 110, 111])
                         ->orderBy('date', 'DESC')
                         ->select('id')
                         ->first();
@@ -29,7 +29,7 @@ class HomeController extends Controller
             // 年間実績
             $sales = Trading::where('member_code', $user->member_code)
                         ->where('date', '>=', $startOfYear)
-                        ->whereIn('trading_type', [10, 11, 12, 20, 110, 111])
+                        ->whereIn('trade_type', [10, 11, 12, 20, 110, 111])
                         ->sum('amount');
             $user->sales = $sales;
             $user->save();
@@ -47,7 +47,7 @@ class HomeController extends Controller
             $nums = User::where('sub_number', $subLeaderValue)
                 ->whereHas('tradings', function ($query) use ($sixMonthsAgo) {
                     $query->where('date', '>=', $sixMonthsAgo)
-                        ->whereIn('trading_type', [10, 11, 12]);
+                        ->whereIn('trade_type', [10, 11, 12]);
                 }) ->count();
 
             // sub_nowカラムを更新、上限を5に設定
@@ -95,7 +95,7 @@ class HomeController extends Controller
             $endOfMonth = Carbon::createFromDate(Carbon::now()->year, $month, 1)->endOfMonth();
             $monthlySales = Trading::where('member_code', $member_code)
                 ->whereBetween('date', [$startOfMonth, $endOfMonth])
-                ->whereIn('trading_type', [10, 11, 12, 110, 111])
+                ->whereIn('trade_type', [10, 11, 12, 110, 111])
                 ->sum('amount');
             $details[] = $monthlySales;
         }
@@ -123,4 +123,5 @@ class HomeController extends Controller
         
         return view('depo-detail', compact('user', 'details'));
     }
+
 }

@@ -4,60 +4,15 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Product;
 use App\Models\DepoRealtime;
 use App\Models\Trading;
+use App\Models\TradeDetail;
 use Carbon\Carbon;
 
 class HomeController extends Controller
 {
-
-    public function refresh_sales() {
-        // 【最新注文&年間実績（年初からの累計セット数）を更新】
-        
-        $startOfYear = Carbon::now()->startOfYear();
-        $users = User::all();
-
-        foreach ($users as $user) {
-            // 最新注文
-            $latest = Trading::where('member_code', $user->member_code)
-                        ->whereIn('trade_type', [10, 11, 12, 20, 110, 111])
-                        ->orderBy('date', 'DESC')
-                        ->select('id')
-                        ->first();
-            $user->latest_trade = $latest ? $latest->id : null;
-            
-            // 年間実績
-            $sales = Trading::where('member_code', $user->member_code)
-                        ->where('date', '>=', $startOfYear)
-                        ->whereIn('trade_type', [10, 11, 12, 20, 110, 111])
-                        ->sum('amount');
-            $user->sales = $sales;
-            $user->save();
-        }
-
-        // 【資格手当（過去6ヵ月に実績のあるグループメンバーの人数）を更新】
-        // sub_leaderの値が0でないユーザーを取得
-        $usersWithSubLeader = User::where('sub_leader', '!=', 0)->get();
-        $currentDate = Carbon::now(); $sixMonthsAgo = $currentDate->subMonths(6);
-        // $subs配列にsub_leaderの値を格納
-        $subs = $usersWithSubLeader->pluck('sub_leader')->toArray();
-        foreach ($usersWithSubLeader as $user) {
-            $subLeaderValue = $user->sub_leader;
-            // 過去6ヶ月の実績を持つユーザーの数を取得
-            $nums = User::where('sub_number', $subLeaderValue)
-                ->whereHas('tradings', function ($query) use ($sixMonthsAgo) {
-                    $query->where('date', '>=', $sixMonthsAgo)
-                        ->whereIn('trade_type', [10, 11, 12]);
-                }) ->count();
-
-            // sub_nowカラムを更新、上限を5に設定
-            $user->sub_now = min($nums, 5);
-            $user->save();
-        }
-
-        return $this->sales_home();
-    }
-    
+   
     public function sales_home() {
         // depo_statusが0ではない行を取得
         $users = User::where('status', 1)
@@ -119,9 +74,33 @@ class HomeController extends Controller
             ->first();
         $details = DepoRealtime::with('product')
             ->where('member_code', $member_code)
+            ->where('amount', '!=', 0)
+            ->orderBy('product_id', 'ASC')
             ->get();
         
         return view('depo-detail', compact('user', 'details'));
+    }
+
+    public function admin(Request $request){
+        $trades = Trading::with('user')
+            ->orderBy('updated_at', 'DESC')
+            ->get();
+
+        if ($request->isMethod('post')) {
+            $tradeId = $request->input('trading');
+            $display = Trading::with('user')
+                ->where('id', $tradeId)
+                ->select('member_code', 'amount')
+                ->first();
+            $details = TradeDetail::with('product')
+                ->where('trade_id', $tradeId)
+                ->get();
+        } else {
+            $details = null;
+            $display = null;
+        }
+
+        return view('admin', compact('trades', 'display', 'details'));
     }
 
 }

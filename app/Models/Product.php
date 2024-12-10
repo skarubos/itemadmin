@@ -20,6 +20,10 @@ class Product extends Model
     {
         return $this->hasMany(DepoRealtime::class, 'product_id');
     }
+    public function trade_details()
+    {
+        return $this->hasMany(TradeDetail::class, 'product_id');
+    }
 
     /**
      * 主キーのカラム名

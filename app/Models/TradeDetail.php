@@ -15,6 +15,10 @@ class TradeDetail extends Model
      * @var string
      */
     protected $table = 'trade_details';
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'product_id');
+    }
 
     /**
      * 主キーのカラム名

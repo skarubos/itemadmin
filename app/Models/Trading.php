@@ -15,6 +15,10 @@ class Trading extends Model
      * @var string
      */
     protected $table = 'tradings';
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'member_code', 'member_code');
+    }
 
     /**
      * 主キーのカラム名

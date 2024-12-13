@@ -15,25 +15,39 @@
         {{ session('success') }}
     </div>
 @endif
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Dashboard') }}
-        </h2>
-    </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 pb-8 px-5 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-center text-gray-900 dark:text-gray-100">
-                    {{ __("You're logged in!") }}
-                </div>
-                <!-- 更新 -->
-                <a href="/refresh_sales">
-                    <x-primary-button class="px-10">
-                        Refresh
+<div class="pt-3 pb-8">
+    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 p-6 shadow-sm bg-clip-border rounded-lg">
+        <div class="">
+        <div class="flex mb-4">
+            <div class="w-4/6 ">
+                <p class="text-center text-2xl font-bold leading-snug tracking-normal antialiased">
+                    {{ str_replace('　', ' ', $user['name']) }} <br> <span class="text-base">預け:</span> {{ $user['depo_status'] }} <span class="text-base">セット</span>
+                </p>
+            </div>
+            <div class="w-2/6 mt-3">
+                <a href="/depo_detail_history/{{ $user['member_code'] }}">
+                    <x-primary-button class="items-center justify-center px-3">
+                        履歴を表示
                     </x-primary-button>
                 </a>
             </div>
         </div>
+        <div class="grid grid-cols-1 divide-y">
+            @foreach($details as $detail)
+            <div class="flex py-2 font-sans text-xl">
+                <div class="w-11/12 mt-0.5">
+                    {{ str_replace('　', ' ', $detail->product->name) }}
+                </div>
+                <div class="w-1/12 t text-2xl text-right">
+                    {{ $detail['amount'] }}
+                </div>
+            </div>
+            @endforeach
+        </div>
+        </div>
     </div>
+    </div>
+</div>
 </x-app-layout>

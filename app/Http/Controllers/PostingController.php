@@ -40,9 +40,8 @@ class PostingController extends Controller
             'date' => null,
             'amount' => null,
         ];
-        $num = 0;
 
-        foreach ($sheetData as $row) {
+        foreach ($sheetData as $index => $row) {
             if ($row[0] === '氏名') {
                 $summarys['name'] = $row[1];
                 $user = User::where('name', $row[1])->first();
@@ -61,7 +60,7 @@ class PostingController extends Controller
                     $summarys['date'] = $date->format('Y-m-d');
                 }
             } elseif ($row[0] === '伝票No') {
-                $summarys['no'] = $sheetData[$num+1][0];
+                $summarys['no'] = $sheetData[$index+1][0];
             } elseif ($row[0] === '合計') {
                 if (isset($row[1])) {
                     $summarys['amount'] = $row[1];
@@ -71,7 +70,6 @@ class PostingController extends Controller
                     break;
                 }  
             }
-            $num++;
         }
 
         // 商品別セット数の一覧が記載されている行を特定して$details[]に取得

@@ -6,6 +6,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Hash;
 
 class UsersTableSeeder extends Seeder
 {
@@ -20,6 +21,8 @@ class UsersTableSeeder extends Seeder
                     'name_kana' => $data[1],
                     'member_code' => $data[2],
                     'phone_number' => $data[3],
+                    // パスワードを電話番号の下４桁に設定
+                    'password' => Hash::make(substr($data[3], -4)),
                     'depo_status' => $data[4],
                     'sub_leader' => $data[5],
                     'sub_number' => $data[6],

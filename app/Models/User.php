@@ -24,6 +24,15 @@ class User extends Authenticatable
         'name_kana',
         'member_code',
         'phone_number',
+        'sales',
+        'latest_trade',
+        'depo_status',
+        'sub_leader',
+        'sub_number',
+        'sub_now',
+        'priority',
+        'permission',
+        'status',
     ];
 
     /**
@@ -53,4 +62,11 @@ class User extends Authenticatable
     public function tradings() {
         return $this->hasMany(Trading::class, 'member_code', 'member_code');
     }
+
+    // 認証に使用するIDとして member_code を返すように変更
+    public function getAuthIdentifierName()
+    {
+        return 'member_code';
+    }
+
 }

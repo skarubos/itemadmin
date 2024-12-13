@@ -1,12 +1,21 @@
 <x-app-layout>
 <div class="pt-3 pb-8">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-    <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 px-5 shadow-sm bg-clip-border rounded-lg">
-        <div class="p-6">
-        <div class="mb-4">
-            <p class="text-center text-2xl font-bold leading-snug tracking-normal antialiased">
-                {{ str_replace('　', ' ', $user['name']) }} （{{ $user['depo_status'] }} セット）
-            </p>
+    <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 p-6 shadow-sm bg-clip-border rounded-lg">
+        <div class="">
+        <div class="flex mb-4">
+            <div class="w-4/6 ">
+                <p class="text-center text-2xl font-bold leading-snug tracking-normal antialiased">
+                    {{ str_replace('　', ' ', $user['name']) }} <br> <span class="text-base">預け:</span> {{ $user['depo_status'] }} <span class="text-base">セット</span>
+                </p>
+            </div>
+            <div class="w-2/6 mt-3">
+                <a href="/depo_detail_history/{{ $user['member_code'] }}">
+                    <x-primary-button class="items-center justify-center px-3">
+                        履歴を表示
+                    </x-primary-button>
+                </a>
+            </div>
         </div>
         <div class="grid grid-cols-1 divide-y">
             @foreach($details as $detail)

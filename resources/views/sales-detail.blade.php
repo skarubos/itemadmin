@@ -8,7 +8,7 @@
             <p class="inline-block ml-5">預け：{{ $user->depo_status }}</p>
             <p class="inline-block ml-5">合計：{{ $user->sales }}</p>
         </div>
-        <table class="min-w-full border border-gray-200">
+        <table class="min-w-60 mx-auto border border-gray-200">
             <thead class="pt-5 bg-gray-200 dark:bg-gray-800 dark:text-gray-100">
                 <tr>
                     <th class="py-2 px-4 border-b">月</th>

@@ -9,19 +9,26 @@ use App\Models\Product;
 use App\Models\DepoRealtime;
 use App\Models\Trading;
 use App\Models\TradeDetail;
+use App\Http\Controllers\FunctionsController;
 use Carbon\Carbon;
 
 class HomeController extends Controller
 {
+    // FunctionsControllerのメソッドを$this->functionsControllerで呼び出せるようにする
+    private $functionsController;
+    public function __construct(FunctionsController $functionsController)
+    {
+        $this->functionsController = $functionsController;
+    }
+
     public function dashboard(){
         $user = Auth::user();
-        $details = DepoRealtime::with('product')
-            ->where('member_code', $user->member_code)
-            ->where('amount', '!=', 0)
-            ->orderBy('product_id', 'ASC')
-            ->get();
-        
-        return view('dashboard', compact('user', 'details'));
+        if ($user->permission == 1) {
+            return redirect()->route('sales_home');
+        } else {
+            $data = $this->functionsController->get_depo_detail($user->member_code);
+            return view('dashboard', compact('data'));
+        }
     }
  
     public function upload() {
@@ -50,27 +57,8 @@ class HomeController extends Controller
     }
 
     public function sales_detail($member_code){
-        $user = User::where('member_code', $member_code)
-            ->select('name', 'member_code', 'phone_number', 'sales', 'depo_status', 'sub_now')
-            ->first();
-
-        // 1月初めから現在月までの開始日と終了日を取得
-        $startOfYear = Carbon::now()->startOfYear();
-        $currentMonth = Carbon::now()->month;
-        $currentDate = Carbon::now();
-        // 合計実績の計算
-        $details = [];
-        for ($month = 1; $month <= $currentMonth; $month++) {
-            $startOfMonth = Carbon::createFromDate(Carbon::now()->year, $month, 1)->startOfMonth();
-            $endOfMonth = Carbon::createFromDate(Carbon::now()->year, $month, 1)->endOfMonth();
-            $monthlySales = Trading::where('member_code', $member_code)
-                ->whereBetween('date', [$startOfMonth, $endOfMonth])
-                ->whereIn('trade_type', [10, 11, 12, 110, 111])
-                ->sum('amount');
-            $details[] = $monthlySales;
-        }
-        
-        return view('sales-detail', compact('user', 'details'));
+        $data = $this->functionsController->get_sales_detail($member_code);
+        return view('sales-detail', compact('data'));
     }
 
     public function depo_home() {
@@ -84,16 +72,8 @@ class HomeController extends Controller
     }
     
     public function depo_detail($member_code){
-        $user = User::where('member_code', $member_code)
-            ->select('member_code', 'name', 'depo_status')
-            ->first();
-        $details = DepoRealtime::with('product')
-            ->where('member_code', $member_code)
-            ->where('amount', '!=', 0)
-            ->orderBy('product_id', 'ASC')
-            ->get();
-        
-        return view('depo-detail', compact('user', 'details'));
+        $data = $this->functionsController->get_depo_detail($member_code);
+        return view('depo-detail', compact('data'));
     }
 
     public function depo_detail_history($member_code) {

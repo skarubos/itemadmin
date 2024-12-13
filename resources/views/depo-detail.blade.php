@@ -6,11 +6,11 @@
         <div class="flex mb-4">
             <div class="w-4/6 ">
                 <p class="text-center text-2xl font-bold leading-snug tracking-normal antialiased">
-                    {{ str_replace('　', ' ', $user['name']) }} <br> <span class="text-base">預け:</span> {{ $user['depo_status'] }} <span class="text-base">セット</span>
+                    {{ str_replace('　', ' ', $data['user']['name']) }} <br> <span class="text-base">預け:</span> {{ $data['user']['depo_status'] }} <span class="text-base">セット</span>
                 </p>
             </div>
             <div class="w-2/6 mt-3">
-                <a href="/depo_detail_history/{{ $user['member_code'] }}">
+                <a href="/depo_detail_history/{{ $data['user']['member_code'] }}">
                     <x-primary-button class="items-center justify-center px-3">
                         履歴を表示
                     </x-primary-button>
@@ -18,7 +18,7 @@
             </div>
         </div>
         <div class="grid grid-cols-1 divide-y">
-            @foreach($details as $detail)
+            @foreach($data['details'] as $detail)
             <div class="flex py-2 font-sans text-xl">
                 <div class="w-11/12 mt-0.5">
                     {{ str_replace('　', ' ', $detail->product->name) }}

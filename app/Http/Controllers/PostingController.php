@@ -15,6 +15,7 @@ use Carbon\Carbon;
 
 class PostingController extends Controller
 {
+    // FunctionsControllerのメソッドを$this->functionsControllerで呼び出せるようにする
     private $functionsController;
     public function __construct(FunctionsController $functionsController)
     {

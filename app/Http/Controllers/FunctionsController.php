@@ -57,4 +57,46 @@ class FunctionsController extends Controller
         }
     }
 
+    public function get_depo_detail($member_code){
+        $user = User::where('member_code', $member_code)
+            ->select('member_code', 'name', 'depo_status')
+            ->first();
+        $details = DepoRealtime::with('product')
+            ->where('member_code', $member_code)
+            ->where('amount', '!=', 0)
+            ->orderBy('product_id', 'ASC')
+            ->get();
+        return [
+            'user' => $user,
+            'details' => $details,
+        ];
+    }
+
+    public function get_sales_detail($member_code){
+        $user = User::where('member_code', $member_code)
+            ->select('name', 'member_code', 'phone_number', 'sales', 'depo_status', 'sub_now')
+            ->first();
+
+        // 1月初めから現在月までの開始日と終了日を取得
+        $startOfYear = Carbon::now()->startOfYear();
+        $currentMonth = Carbon::now()->month;
+        $currentDate = Carbon::now();
+        // 合計実績の計算
+        $details = [];
+        for ($month = 1; $month <= $currentMonth; $month++) {
+            $startOfMonth = Carbon::createFromDate(Carbon::now()->year, $month, 1)->startOfMonth();
+            $endOfMonth = Carbon::createFromDate(Carbon::now()->year, $month, 1)->endOfMonth();
+            $monthlySales = Trading::where('member_code', $member_code)
+                ->whereBetween('date', [$startOfMonth, $endOfMonth])
+                ->whereIn('trade_type', [10, 11, 12, 110, 111])
+                ->sum('amount');
+            $details[] = $monthlySales;
+        }
+        
+        return [
+            'user' => $user,
+            'details' => $details,
+        ];
+    }
+
 }

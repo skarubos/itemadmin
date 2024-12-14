@@ -20,10 +20,10 @@
         <div class="grid grid-cols-1 divide-y">
             @foreach($data['details'] as $detail)
             <div class="flex py-2 font-sans text-xl">
-                <div class="w-10/12 mt-0.5">
+                <div class="w-5/6 mt-0.5">
                     {{ str_replace('　', ' ', $detail->product->name) }}
                 </div>
-                <div class="w-2/12 t text-2xl text-right">
+                <div class="w-2/12 text-2xl text-right">
                     {{ $detail['amount'] }}
                 </div>
             </div>

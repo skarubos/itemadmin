@@ -5,8 +5,10 @@
         <div class="pt-6">
         <div class="mb-4">
             <p class="text-center text-xl font-bold leading-snug tracking-normal antialiased">
-                入出庫履歴（<spaan class="font-normal"> {{ $user->name }} </span>）
-                <spaan class="text-base">預け: </span><span class="text-xl font-bold">{{ $user->depo_status }}</span>
+                入出庫履歴（<spaan class="font-normal"> {{ $user->name }} </span>）<br>
+                <span class="text-base">現在預け合計: </span>
+                <span class="text-xl font-bold">{{ $user->depo_status }}</span>
+                <span class="text-base">セット</span>
             </p>
         </div>
         <div class="overflow-x-auto grid grid-cols-1 divide-y">

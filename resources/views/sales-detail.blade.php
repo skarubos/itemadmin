@@ -2,13 +2,17 @@
 <div class="pt-3 pb-8">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
     <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 px-5 pb-8 shadow-sm bg-clip-border rounded-lg">
-        <p class="pt-6 pb-2 text-2xl font-bold text-center">{{ $data['user']->name }}</p>
+        <p class="pt-6 pb-2 text-2xl font-bold text-center">
+            <span class="font-light text-xl mr-2">
+                {{ str_pad($data['user']->member_code, 5, '0', STR_PAD_LEFT) }}
+            </span>
+            {{ $data['user']->name }}
+        </p>
         <div class="text-xl h-8 mb-2 text-center">
-            <p class="inline-block">{{ str_pad($data['user']->member_code, 5, '0', STR_PAD_LEFT) }}</p>
             <p class="inline-block ml-5">預け：{{ $data['user']->depo_status }}</p>
             <p class="inline-block ml-5">合計：{{ $data['user']->sales }}</p>
         </div>
-        <table class="min-w-60 mx-auto border border-gray-200">
+        <table class="min-w-40 mx-auto border border-gray-200">
             <thead class="pt-5 bg-gray-200 dark:bg-gray-800 dark:text-gray-100">
                 <tr>
                     <th class="py-2 px-4 border-b">月</th>

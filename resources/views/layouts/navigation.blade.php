@@ -66,7 +66,7 @@
     </div>
 
     <!-- Responsive Navigation Menu -->
-    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
+    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden mb-12">
     @foreach($navigationArray as $navi)
         <div class="py-2 space-y-1">
             <x-responsive-nav-link :href="$navi['href']" :active="request()->routeIs($navi['active'])">
@@ -83,8 +83,8 @@
             </div>
 
             <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile.edit')" class="hidden">
-                    {{ __('Profile') }}
+                <x-responsive-nav-link :href="route('profile.edit')" class="">
+                    {{ __('アカウント') }}
                 </x-responsive-nav-link>
 
                 <!-- Authentication -->

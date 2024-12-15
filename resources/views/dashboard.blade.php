@@ -2,18 +2,20 @@
 <div class="pt-3 pb-8">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
     <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 py-16 shadow-sm bg-clip-border rounded-lg">
-        <div class="mb-10 items-center">
-            <a href="/sales_detail/{{ $user['member_code'] }}">
-            <div class="w-2/3 mx-auto py-8 text-center bg-gray-100 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100 drop-shadow-xl bg-clip-border rounded-2xl text-black text-2xl ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white">
+        <div class="mb-10 flex items-center">
+            <a 
+                href="/sales_detail/{{ $user['member_code'] }}"
+                class="w-2/3 mx-auto py-8 text-center bg-gray-100 dark:bg-gray-900 font-sansdrop-shadow-xl bg-clip-border rounded-2xl text-2xl"
+            >
                 注文履歴
-            </div>
             </a>
         </div>
-        <div class="mb-10 items-center">
-            <a href="/depo_detail/{{ $user['member_code'] }}">
-            <div class="w-2/3 mx-auto py-8 text-center bg-gray-100 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100 drop-shadow-xl bg-clip-border rounded-2xl text-black text-2xl ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white">
+        <div class="mb-10 flex items-center">
+            <a 
+                href="/depo_detail/{{ $user['member_code'] }}"
+                class="w-2/3 mx-auto py-8 text-center bg-gray-100 dark:bg-gray-900 font-sans drop-shadow-xl bg-clip-border rounded-2xl text-2xl"
+            >
                 預け
-            </div>
             </a>
         </div>
         <p class="mx-auto pt-10 text-center">

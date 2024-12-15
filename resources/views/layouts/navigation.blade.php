@@ -17,11 +17,11 @@
                     </x-nav-link>
                 </div>
                 @endforeach
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                <!-- <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     <x-nav-link :href="route('test')" :active="request()->routeIs('test')">
                         TEST
                     </x-nav-link>
-                </div>
+                </div> -->
             </div>
 
             <!-- Settings Dropdown -->

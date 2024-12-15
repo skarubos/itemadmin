@@ -10,12 +10,12 @@
         </p>
         <div class="text-xl h-8 mb-2 text-center">
             <p class="inline-block ml-5">預け：{{ $data['user']->depo_status }}</p>
-            <p class="inline-block ml-5">合計：{{ $data['user']->sales }}</p>
+            <p class="inline-block ml-5">年間：{{ $data['user']->sales }}</p>
         </div>
         <table class="min-w-40 mx-auto border border-gray-200">
             <thead class="pt-5 bg-gray-200 dark:bg-gray-800 dark:text-gray-100">
                 <tr>
-                    <th class="py-2 px-4 border-b">月</th>
+                    <th class="py-2 px-4 border-b">2024</th>
                     <th class="py-2 px-4 border-b">セット</th>
                 </tr>
             </thead>

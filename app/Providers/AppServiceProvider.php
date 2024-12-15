@@ -32,10 +32,11 @@ class AppServiceProvider extends ServiceProvider
                 $href1 = ["/sales", "/depo", "/admin", "/upload"];
                 $activ1 = ["sales_home", "depo_home", "admin", "upload"];
                 $text1 = ["実績", "預け", "管理用", "取引登録"];
-                $href22 = '/sales_detail/' . $user->member_code;
-                $href2 = ["/dashboard", $href22];
-                $activ2 = ["dashboard", "sales_detail"];
-                $text2 = ["預け", "注文履歴"];
+                $href21 = '/sales_detail/' . $user->member_code;
+                $href22 = '/depo_detail/' . $user->member_code;
+                $href2 = [$href21, $href22];
+                $activ2 = ["sales_detail", "depo_detail"];
+                $text2 = ["注文履歴", "預け"];
 
                 if ($user->permission == 1) {
                     for ($i = 0; $i < count($href1); $i++) {

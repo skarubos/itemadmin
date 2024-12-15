@@ -1,53 +1,28 @@
 <x-app-layout>
-@if ($errors->any())
-    <div class="block bg-red-500 text-white p-10 py-2">
-        <ul>
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
-
-<!-- 成功メッセージ -->
-@if (session('success'))
-    <div class="block bg-green-500 text-white p-10 py-2">
-        {{ session('success') }}
-    </div>
-@endif
-
 <div class="pt-3 pb-8">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-    <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 p-6 shadow-sm bg-clip-border rounded-lg">
-        <div class="">
-        <div class="flex mb-4">
-            <div class="w-4/6 ">
-                <p class="text-center text-2xl font-bold leading-snug tracking-normal antialiased">
-                    {{ str_replace('　', ' ', $data['user']['name']) }} <br> <span class="text-base">預け:</span> {{ $data['user']['depo_status'] }} <span class="text-base">セット</span>
-                </p>
-            </div>
-            <div class="w-2/6 mt-3">
-                <a href="/depo_detail_history/{{ $data['user']['member_code'] }}">
-                    <x-primary-button class="items-center justify-center px-3">
-                        履歴を表示
-                    </x-primary-button>
-                </a>
-            </div>
+    <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 py-16 shadow-sm bg-clip-border rounded-lg">
+        <div class="mb-10 flex items-center">
+            <a
+                href="/sales_detail/{{ $user['member_code'] }}"
+                class="w-2/3 mx-auto py-8 text-center bg-gray-100 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100 drop-shadow-xl bg-clip-border rounded-2xl text-black text-2xl ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
+            >
+                注文履歴
+            </a>
         </div>
-        <div class="grid grid-cols-1 divide-y">
-            @foreach($data['details'] as $detail)
-            <div class="flex py-2 font-sans text-xl">
-                <div class="w-11/12 mt-0.5">
-                    {{ str_replace('　', ' ', $detail->product->name) }}
-                </div>
-                <div class="w-1/12 t text-2xl text-right">
-                    {{ $detail['amount'] }}
-                </div>
-            </div>
-            @endforeach
+        <div class="flex items-center">
+            <a
+                href="/depo_detail/{{ $user['member_code'] }}"
+                class="w-2/3 mx-auto py-8 text-center bg-gray-100 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100 drop-shadow-xl bg-clip-border rounded-2xl text-black text-2xl ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
+            >
+                預け
+            </a>
         </div>
-        </div>
+        <p class="mx-auto pt-20 text-center">
+        最終更新：{{ \Carbon\Carbon::parse($latest->updated_at)->format('Y年n月j日') }}
+        </p>
     </div>
+    
     </div>
 </div>
 </x-app-layout>

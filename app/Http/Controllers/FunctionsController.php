@@ -12,6 +12,8 @@ use App\Models\Trading;
 use App\Models\TradeDetail;
 use App\Models\TradeType;
 use Carbon\Carbon;
+use DOMDocument;
+use DOMXPath;
 
 class FunctionsController extends Controller
 {
@@ -97,6 +99,23 @@ class FunctionsController extends Controller
             'user' => $user,
             'details' => $details,
         ];
+    }
+
+    public function get_tables_url($url){
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_COOKIEFILE, storage_path('app/cookie.txt'));
+        $data = curl_exec($ch);
+        curl_close($ch);
+
+        // DOMパーサーを使用してデータを解析
+        $dom = new DOMDocument();
+        @$dom->loadHTML($data);
+
+        // table要素を取得
+        $tables = $dom->getElementsByTagName('table');
+        return $tables;
     }
 
 }

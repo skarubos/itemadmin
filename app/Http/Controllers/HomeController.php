@@ -11,6 +11,8 @@ use App\Models\Trading;
 use App\Models\TradeDetail;
 use App\Http\Controllers\FunctionsController;
 use Carbon\Carbon;
+use DOMDocument;
+use DOMXPath;
 
 class HomeController extends Controller
 {
@@ -26,8 +28,11 @@ class HomeController extends Controller
         if ($user->permission == 1) {
             return redirect()->route('sales_home');
         } else {
-            $data = $this->functionsController->get_depo_detail($user->member_code);
-            return view('dashboard', compact('data'));
+            // $data = $this->functionsController->get_depo_detail($user->member_code);
+            $latest = Trading::orderBy('updated_at', 'DESC')
+            ->select('updated_at')
+            ->first();
+            return view('dashboard', compact('user', 'latest'));
         }
     }
  
@@ -176,4 +181,144 @@ class HomeController extends Controller
         return view('admin', compact('trades', 'display', 'details'));
     }
 
+
+    public function test_(){
+        // URLからHTMLを取得
+        $url = 'https://www.data.jma.go.jp/stats/etrn/view/10min_s1.php?prec_no=49&block_no=47638&year=2023&month=12&day=01';
+
+        // cURLを使用してデータを取得
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        $html = curl_exec($ch);
+        curl_close($ch);
+dd($html);
+        $dom = new DOMDocument;
+        @$dom->loadHTML($html);
+        $xpath = new DOMXPath($dom);
+
+        // id="tablefix1"のtableを取得
+        $tables = $xpath->query('//table[@id="tablefix1"]');
+
+        $arr = array();
+
+        foreach ($tables as $table) {
+            $rows = $table->getElementsByTagName('tr');
+            foreach ($rows as $row) {
+                $cols = $row->getElementsByTagName('td');
+                if ($cols->length > 0) {
+                    // 'temperature', 'humidity', 'sunlight'の値が数値の文字列の場合は数値に変換、それ以外の場合はnullを格納
+                    $temperature = is_numeric($cols->item(4)->nodeValue) ? floatval($cols->item(4)->nodeValue) : null;
+                    $humidity = is_numeric($cols->item(5)->nodeValue) ? floatval($cols->item(5)->nodeValue) : null;
+                    $sunlight = is_numeric($cols->item(10)->nodeValue) ? intval($cols->item(10)->nodeValue) * 10 : null;
+                    // 0, 4, 5, 10番目の列のデータを取得
+                    $arr[] = array(
+                        'time' => $cols->item(0)->nodeValue,
+                        'temperature' => $temperature,
+                        'humidity' => $humidity,
+                        'sunlight' => $sunlight
+                    );
+                }
+            }
+        }
+// dd($arr);
+        // データをビューに渡す
+        return view('test', ['weatherData' => $arr]);
+    }
+
+
+    public function test()
+    {
+        // ログイン情報
+        // $loginUrl = 'https://looop-denki.com/mypage/auth/login/';
+        $loginUrl = 'https://www.mikigroup.jp/login';
+        $dairiten_cd = '3851';
+        $password = 'vs6ky99j';
+        $token = 'qAuMcDUoeRZj0lb2OQ8Gw728yolX8oaYgs5DSOAf';
+    
+        // 初期化
+        // $ch = curl_init();
+        // curl_setopt($ch, CURLOPT_URL, $loginUrl);
+        // curl_setopt($ch, CURLOPT_POST, 1);
+        // curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        //     'dairiten_cd' => $dairiten_cd,
+        //     'password' => $password,
+        //     '_token' => $token
+        // ]));
+        // curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        // curl_setopt($ch, CURLOPT_COOKIEJAR, storage_path('app/cookie.txt'));
+        // curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        // curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        //     'User-Agent: Mozilla/5.0',
+        //     'Accept: text/html',
+        //     'Referer: https://www.mikigroup.jp/login', // リファラーを追加
+        // ]);
+    
+        // $response = curl_exec($ch);
+    
+        // ログイン後のページからデータを取得
+        // $dataUrl = 'https://www.mikigroup.jp/month02?jutyuno=60376&dendt=20241025';
+        // $dataUrl = 'https://www.mikigroup.jp/jisseki02';
+        $dataUrl = 'https://www.mikigroup.jp/month01';
+        
+        $tables = $this->functionsController->get_tables_url($dataUrl);
+
+        $firstTable = $tables->item(0);
+        // tableの行を取得
+        $rows = $firstTable->getElementsByTagName('tr');
+        // 行ごとにデータを取得
+        $tradeList = [];
+        foreach ($rows as $i => $row) {
+            if ($i < 5) continue; // 先頭の5行をスキップ
+        
+            $cols = $row->getElementsByTagName('td');
+            $rowData = [];
+            foreach ($cols as $j => $col) {
+                if ($j == 0) {
+                    // aタグのhref属性を取得
+                    $link = $col->getElementsByTagName('a');
+                    if ($link->length > 0) {
+                        $rowData[] = $link->item(0)->getAttribute('href');
+                    }
+                } elseif ($j > 1) {
+                    $rowData[] = trim($col->nodeValue);
+                }
+            }
+            $tradeList[] = $rowData;
+        }  
+    // dd($tradeList);
+    
+        $details = [];
+        foreach ($tradeList as $index => $trade) {
+            $tradeUrl = "https://www.mikigroup.jp/" . $trade[0];
+            $tables = $this->functionsController->get_tables_url($tradeUrl);
+            $detail = [];
+            for ($k = 0; $k < count($tables); $k++) {
+                if ($k < 1) continue;
+                $firstTable = $tables->item($k);
+                // tableの行を取得
+                $rows = $firstTable->getElementsByTagName('tr');
+                // 行ごとにデータを取得
+                $tableData = [];
+                foreach ($rows as $i => $row) {
+                    $cols = $row->getElementsByTagName('td');
+                    $rowData = [];
+                    foreach ($cols as $col) {
+                        $rowData[] = trim($col->nodeValue);
+                    }
+                    $tableData[] = $rowData;
+                }
+                $detail[] = $tableData;
+            }
+            $details[] = $detail;
+        }
+    dd($tradeList, $details);
+        
+        $tradeType = TradeType::all();
+        // データをビューに渡す
+        return view('test', compact('tradeList', 'details', 'tradeType'));
+    }
+
 }
+
+

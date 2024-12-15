@@ -30,6 +30,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/save', [PostingController::class, 'save'])->name('save');
         Route::match(['get', 'post'], '/admin', [HomeController::class, 'admin'])->name('admin');
         Route::post('/delete', [PostingController::class, 'delete'])->name('delete');
+        Route::get('/test', [HomeController::class, 'test'])->name('test');
     });
 
     // depo_detail, depo_detail_history, sales_detailは、permission=1なら誰のデータでも閲覧可能

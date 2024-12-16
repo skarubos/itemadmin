@@ -1,6 +1,6 @@
 <x-app-layout>
 <div class="pt-3 pb-8">
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="max-w-xl mx-auto sm:px-6 lg:px-8">
     <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 px-5 pb-8 shadow-sm bg-clip-border rounded-lg">
         <p class="pt-6 pb-2 text-2xl font-bold text-center">
             <span class="font-light text-xl mr-2">

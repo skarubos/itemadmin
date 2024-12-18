@@ -164,7 +164,7 @@ class PostingController extends Controller
             $trading->save();
 
             // 注文の時の処理
-            if (in_array($tradeType, [10, 11, 12, 20, 110, 111])) {
+            if (in_array($tradeType, config('custom.sales_tradeTypes'))) {
                 $user = User::where('member_code', $memberCode)->first();
                 $user->latest_trade = $trading->id;
                 $user->sales += $amount;
@@ -172,7 +172,7 @@ class PostingController extends Controller
             }
 
             // 預け入れの時の処理
-            if (in_array($tradeType, [11, 111])) {
+            if (in_array($tradeType, config('custom.depo_tradeTypesIn'))) {
                 $user = User::where('member_code', $memberCode)->first();
                 $user->depo_status += $amount;
                 $user->save();
@@ -188,7 +188,7 @@ class PostingController extends Controller
             }
 
             // 預け出しの時の処理
-            if (in_array($tradeType, [21, 121])) {
+            if (in_array($tradeType, config('custom.depo_tradeTypesOut'))) {
                 $user = User::where('member_code', $memberCode)->first();
                 $user->depo_status -= $amount;
                 $user->save();
@@ -249,7 +249,7 @@ class PostingController extends Controller
         DB::beginTransaction();
         try {
             // trade_typeが注文の時の処理
-            if (in_array($tradeType, [10, 11, 12, 20, 110, 111])) {
+            if (in_array($tradeType, config('custom.sales_tradeTypes'))) {
                 $user = User::where('member_code', $memberCode)->first();
                 // 最新注文の訂正
                 $latest =  $this->functionsController->latestTrade($memberCode);
@@ -260,7 +260,7 @@ class PostingController extends Controller
             }
 
             // 預け入れの時の処理
-            if (in_array($tradeType, [11, 111])) {
+            if (in_array($tradeType, config('custom.depo_tradeTypesIn'))) {
                 $user = User::where('member_code', $memberCode)->first();
                 $user->depo_status -= $amount;
                 $user->save();
@@ -276,7 +276,7 @@ class PostingController extends Controller
             }
 
             // 預け出しの時の処理
-            if (in_array($tradeType, [21, 121])) {
+            if (in_array($tradeType, config('custom.depo_tradeTypesOut'))) {
                 $user = User::where('member_code', $memberCode)->first();
                 $user->depo_status += $amount;
                 $user->save();

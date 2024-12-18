@@ -1,13 +1,16 @@
 <x-app-layout>
 <div class="pt-3 pb-8">
     <div class="max-w-xl mx-auto sm:px-6 lg:px-8">
-    <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 px-5 pb-8 shadow-sm bg-clip-border rounded-lg">
-        <p class="pt-6 pb-2 text-2xl font-bold text-center">
-            <span class="font-light text-xl mr-2">
-                {{ str_pad($data['user']->member_code, 5, '0', STR_PAD_LEFT) }}
-            </span>
-            {{ $data['user']->name }}
-        </p>
+    <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 p-8 shadow-sm bg-clip-border rounded-lg">
+        <div class="mb-2 text-center">
+            @if ($data['user']->sub_leader != 0)
+            <div class="inline-block text-xl bg-gray-100 dark:bg-gray-900 px-5 py-0.5 rounded-2xl">
+                {{ $data['user']->sub_now }}
+                <span class="text-lg">級</span>
+            </div>
+            @endif
+            <div class="inline-block text-2xl font-bold ml-5 align-bottom">{{ $data['user']->name }}</div>
+        </div>
         <div class="text-xl h-8 mb-2 text-center">
             <p class="inline-block ml-5">預け：{{ $data['user']->depo_status }}</p>
             <p class="inline-block ml-5">年間：{{ $data['user']->sales }}</p>

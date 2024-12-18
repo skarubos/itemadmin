@@ -87,7 +87,7 @@ class HomeController extends Controller
             ->first();
     
         $tradings = Trading::where('member_code', $member_code)
-            ->whereIn('trade_type', [11, 21, 111, 121])
+            ->whereIn('trade_type', config('custom.depo_tradeTypes'))
             ->select('id', 'date', 'trade_type', 'amount')
             ->orderBy('date', 'ASC')
             ->get();
@@ -320,5 +320,3 @@ dd($html);
     }
 
 }
-
-

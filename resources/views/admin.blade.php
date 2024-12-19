@@ -28,8 +28,26 @@
                     </a>
                 </div>
 
-                <!-- 削除 -->
+                
                 <div class="m-4">
+                    <!-- 営業所ページへのリンク -->
+                    <form action="/show_dashboard" method="POST" enctype="multipart/form-data" class="mb-5">
+                        @csrf
+                        <label for="user_dashboard" class="text-sm font-medium">ユーザーを選択（ダッシュボードを表示）</label>
+                        <div class="">
+                        <select name="user_dashboard" id="user_dashboard" class="w-2/6 dark:bg-gray-900 mt-1 mr-5 py-2 px-8 shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
+                            @foreach($users as $user)
+                                <option value="{{ $user['member_code'] }}" class="">
+                                    {{ $user->name . "（" . $user->sub_now . "）" }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <x-primary-button class="w-1/6 items-center justify-center">
+                            show Dashboard
+                        </x-primary-button>
+                        </div>
+                    </form>
+
                     <form action="/admin" method="POST" enctype="multipart/form-data" class="mb-5">
                         @csrf
                         <label for="trading" class="text-sm font-medium">詳細を表示する取引を選択</label>
@@ -46,6 +64,8 @@
                         </x-primary-button>
                         </div>
                     </form>
+
+                    <!-- 削除 -->
                     <form action="/delete" method="POST" enctype="multipart/form-data">
                         @csrf
                         <label for="trade_id" class="text-sm font-medium">削除する取引を選択</label>

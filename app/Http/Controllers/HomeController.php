@@ -28,12 +28,22 @@ class HomeController extends Controller
         if ($user->permission == 1) {
             return redirect()->route('sales_home');
         } else {
-            // $data = $this->functionsController->get_depo_detail($user->member_code);
             $latest = Trading::orderBy('updated_at', 'DESC')
             ->select('updated_at')
             ->first();
             return view('dashboard', compact('user', 'latest'));
         }
+    }
+    public function show_dashboard(Request $request){
+        $request->validate([
+            'user_dashboard' => 'required|integer',
+        ]);
+        $member_code = $request->input('user_dashboard');
+        $user = User::where('member_code', $member_code)->first();
+        $latest = Trading::orderBy('updated_at', 'DESC')
+        ->select('updated_at')
+        ->first();
+        return view('dashboard', compact('user', 'latest'));
     }
  
     public function upload() {
@@ -160,11 +170,19 @@ class HomeController extends Controller
     }    
 
     public function admin(Request $request){
+        $users = User::where('status', 1)
+            ->select('id', 'name', 'member_code', 'sales', 'latest_trade', 'sub_leader', 'sub_now')
+            ->orderBy('priority', 'ASC')
+            ->get();
+
         $trades = Trading::with('user')
             ->orderBy('updated_at', 'DESC')
             ->get();
 
         if ($request->isMethod('post')) {
+            $request->validate([
+                'trading' => 'required|integer',
+            ]);
             $tradeId = $request->input('trading');
             $display = Trading::with('user')
                 ->where('id', $tradeId)
@@ -178,7 +196,7 @@ class HomeController extends Controller
             $display = null;
         }
 
-        return view('admin', compact('trades', 'display', 'details'));
+        return view('admin', compact('users', 'trades', 'display', 'details'));
     }
 
 

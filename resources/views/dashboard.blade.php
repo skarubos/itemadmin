@@ -1,7 +1,15 @@
 <x-app-layout>
 <div class="pt-3 pb-8">
     <div class="w-full min-h-screen max-w-7xl mx-auto sm:px-6 lg:px-8">
-    <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 py-16 shadow-sm bg-clip-border rounded-lg">
+    <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 py-12 shadow-sm bg-clip-border rounded-lg">
+        <div class="mb-10">
+            <p class="text-2xl font-bold text-center">
+                <span class="font-light text-xl mr-2">
+                    {{ str_pad($user->member_code, 5, '0', STR_PAD_LEFT) }}
+                </span>
+                {{ $user->name }}<span class="ml-2">様</span>
+            </p>
+        </div>
         <div class="mb-10">
             <a 
                 href="/sales_detail/{{ $user['member_code'] }}"
@@ -9,8 +17,6 @@
             >
                 注文履歴
             </a>
-        </div>
-        <div class="h-10">
         </div>
         <div class="mb-10">
             <a 
@@ -20,9 +26,9 @@
                 預け
             </a>
         </div>
-        <p class="mx-auto pt-20 text-center">
+        <p class="mx-auto pt-10 text-center">
         最終更新：{{ \Carbon\Carbon::parse($latest->updated_at)->format('Y年n月j日') }}<br>
-        （反映は注文から数日遅れになります。）
+        （注文日から数日後に反映されます。）
         </p>
     </div>
     

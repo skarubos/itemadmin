@@ -167,7 +167,53 @@ class HomeController extends Controller
         }
 
         return view('depo-detail-history', compact('user', 'tradings', 'products', 'amountsSelected'));
-    }    
+    }
+
+    public function sub_detail($member_code){
+        $user = User::where('member_code', $member_code)
+            ->select('member_code', 'name', 'sub_leader', 'sub_number', 'sub_now')
+            ->first();
+        $groupMembers = User::where('sub_number', $user->sub_leader)
+            ->select('member_code', 'name')
+            ->get();
+        
+        // 過去6ヵ月の傘下営業所の取引を取得
+        $groupTradings = [];
+        $currentDate = Carbon::now();
+        $startDate = $currentDate->copy()->subMonths(config('custom.sub_monthsCovered'))->addDay();
+        foreach ($groupMembers as $member) {
+            $tradings = Trading::with(['trade_type' => function($query) {
+                    $query->select('trade_type', 'name');
+                }])
+                ->where('date', '>=', $startDate)
+                ->where('member_code', $member->member_code)
+                ->whereIn('trade_type', config('custom.sales_tradeTypesEigyosho'))
+                ->select('id', 'date', 'trade_type', 'amount')
+                ->orderBy('date', 'ASC')
+                ->get();
+            $groupTradings[] = $tradings;
+        }
+        
+        return view('sub-detail', compact('user', 'groupMembers', 'groupTradings', 'currentDate'));
+    }
+
+    public function sub_trade($trade_id) {
+        $trade = Trading::with(['trade_type' => function($query) {
+                $query->select('trade_type', 'name');
+            }])
+            ->with(['user' => function($query) {
+                $query->select('member_code', 'name');
+            }])
+            ->where('id', $trade_id)
+            ->select('id', 'member_code', 'date', 'trade_type', 'amount')
+            ->first();
+
+        $details = $details = TradeDetail::with('product')
+            ->where('trade_id', $trade_id)
+            ->get();
+
+        return view('sub-trade', compact('trade', 'details'));
+    }
 
     public function admin(Request $request){
         $users = User::where('status', 1)
@@ -175,8 +221,10 @@ class HomeController extends Controller
             ->orderBy('priority', 'ASC')
             ->get();
 
-        $trades = Trading::with('user')
-            ->orderBy('updated_at', 'DESC')
+        $trades = Trading::with(['user' => function($query) {
+                $query->select('member_code', 'name');
+            }])
+            ->orderBy('date', 'DESC')
             ->get();
 
         if ($request->isMethod('post')) {
@@ -184,7 +232,9 @@ class HomeController extends Controller
                 'trading' => 'required|integer',
             ]);
             $tradeId = $request->input('trading');
-            $display = Trading::with('user')
+            $display = Trading::with(['user' => function($query) {
+                    $query->select('member_code', 'name');
+                }])
                 ->where('id', $tradeId)
                 ->select('member_code', 'amount')
                 ->first();

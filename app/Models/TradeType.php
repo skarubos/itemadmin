@@ -21,6 +21,11 @@ class TradeType extends Model
         return $this->hasMany(DepoRealtime::class, 'product_id');
     }
 
+    // Tradingsリレーションの追加
+    public function tradingType() {
+        return $this->hasMany(Trading::class, 'trade_type', 'trade_type');
+    }
+
     /**
      * 主キーのカラム名
      *

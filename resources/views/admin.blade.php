@@ -22,7 +22,7 @@
                 <!-- 更新 -->
                 <div class="p-10">
                     <a href="/refresh_sales">
-                        <x-primary-button class="w-1/6 items-center justify-center">
+                        <x-primary-button class="px-6 items-center justify-center">
                             Refresh
                         </x-primary-button>
                     </a>
@@ -35,14 +35,14 @@
                         @csrf
                         <label for="user_dashboard" class="text-sm font-medium">ユーザーを選択（ダッシュボードを表示）</label>
                         <div class="">
-                        <select name="user_dashboard" id="user_dashboard" class="w-2/6 dark:bg-gray-900 mt-1 mr-5 py-2 px-8 shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
+                        <select name="user_dashboard" id="user_dashboard" class="w-2/6 min-w-56 dark:bg-gray-900 mt-1 mr-5 py-2 px-8 shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
                             @foreach($users as $user)
                                 <option value="{{ $user['member_code'] }}" class="">
                                     {{ $user->name . "（" . $user->sub_now . "）" }}
                                 </option>
                             @endforeach
                         </select>
-                        <x-primary-button class="w-1/6 items-center justify-center">
+                        <x-primary-button class="px-5 my-2 items-center justify-center">
                             show Dashboard
                         </x-primary-button>
                         </div>
@@ -52,14 +52,14 @@
                         @csrf
                         <label for="trading" class="text-sm font-medium">詳細を表示する取引を選択</label>
                         <div class="">
-                        <select name="trading" id="trading" class="w-2/6 dark:bg-gray-900 mt-1 mr-5 py-2 px-8 shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
+                        <select name="trading" id="trading" class="w-2/6 min-w-56 dark:bg-gray-900 mt-1 mr-5 py-2 px-8 shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
                             @foreach($trades as $trade)
                                 <option value="{{ $trade['id'] }}" class="">
                                     {{ $trade['id'] . ' （' . $trade['date'].  '） ' . $trade->user->name . ' : ' . $trade['amount'] . 'セット' }}
                                 </option>
                             @endforeach
                         </select>
-                        <x-primary-button class="w-1/6 items-center justify-center">
+                        <x-primary-button class="px-5 my-2 items-center justify-center">
                             Display
                         </x-primary-button>
                         </div>
@@ -70,14 +70,14 @@
                         @csrf
                         <label for="trade_id" class="text-sm font-medium">削除する取引を選択</label>
                         <div class="">
-                        <select name="trade_id" id="trade_id" class="w-2/6 dark:bg-gray-900 mt-1 mr-5 py-2 px-8 shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
+                        <select name="trade_id" id="trade_id" class="w-2/6 min-w-56 dark:bg-gray-900 mt-1 mr-5 py-2 px-8 shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
                             @foreach($trades as $trade)
                                 <option value="{{ $trade['id'] }}" class="">
                                     {{ $trade['id'] . ' （' . $trade['date'].  '） ' . $trade->user->name . ' : ' . $trade['amount'] . 'セット' }}
                                 </option>
                             @endforeach
                         </select>
-                        <x-primary-button class="w-1/6 items-center justify-center">
+                        <x-primary-button class="text-red-600 px-5 my-2 items-center justify-center">
                             Delete
                         </x-primary-button>
                         </div>
@@ -86,13 +86,13 @@
             </div>
         </div>
     @if (isset($display))
-        <div class="p-20">
+        <div class="p-8">
         <div class="mb-4">
             <p class="text-2xl font-bold leading-snug tracking-normal antialiased">
                 {{ $display->user->name . " : " . $display->amount }}
             </p>
         </div>
-        <div class="w-1/2 grid grid-cols-1 divide-y">
+        <div class="max-w-xl grid grid-cols-1 divide-y">
             @foreach($details as $detail)
             <div class="flex py-2 font-sans text-xl">
                 <div class="w-11/12 mt-0.5">

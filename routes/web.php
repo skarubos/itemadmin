@@ -40,6 +40,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/depo_detail/{member_code}', [HomeController::class, 'depo_detail'])->name('depo_detail');
         Route::get('/depo_detail_history/{member_code}', [HomeController::class, 'depo_detail_history'])->name('depo_detail_history');
         Route::get('/sales_detail/{member_code}', [HomeController::class, 'sales_detail'])->name('sales_detail');
+        Route::get('/sub/{member_code}', [HomeController::class, 'sub_detail'])->name('sub_detail');
+        Route::get('/sub_trade/{member_code}', [HomeController::class, 'sub_trade'])->name('sub_trade');
     });
 });
 

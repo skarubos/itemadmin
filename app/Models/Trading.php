@@ -19,6 +19,10 @@ class Trading extends Model
     {
         return $this->belongsTo(User::class, 'member_code', 'member_code');
     }
+    public function trade_type()
+    {
+        return $this->belongsTo(TradeType::class, 'trade_type', 'trade_type');
+    }
 
     /**
      * 主キーのカラム名

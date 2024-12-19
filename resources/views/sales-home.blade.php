@@ -1,6 +1,6 @@
 <x-app-layout>
 <div class="pt-3 pb-20">
-    <div class="max-w-xl mx-auto sm:px-6 lg:px-8">
+    <div class="max-w-xl mx-auto lg:px-8">
     <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 px-6 py-6 shadow-sm bg-clip-border rounded-lg">
         <div class="my-4">
             <p class="text-center text-lg font-bold leading-snug tracking-normal antialiased">
@@ -32,7 +32,7 @@
                             -
                         @endif
                     </div>
-                    <div class="min-w-10 text-right">
+                    <div class="min-w-10 text-right pl-0 sm:pl-3">
                         {{ $user['sales'] }}
                     </div>
                 </div>

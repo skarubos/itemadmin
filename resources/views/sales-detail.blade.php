@@ -4,7 +4,7 @@
     <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 p-8 shadow-sm bg-clip-border rounded-lg">
         <div class="mb-2 text-center">
             @if ($data['user']->sub_leader != 0)
-            <div class="inline-block text-xl bg-gray-100 dark:bg-gray-900 px-5 py-0.5 rounded-2xl">
+            <div class="hidden inline-block text-xl bg-gray-100 dark:bg-gray-900 px-5 py-0.5 rounded-2xl">
                 {{ $data['user']->sub_now }}
                 <span class="text-lg">級</span>
             </div>

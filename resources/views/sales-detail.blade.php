@@ -3,12 +3,6 @@
     <div class="max-w-xl mx-auto sm:px-6 lg:px-8">
     <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 p-8 shadow-sm bg-clip-border rounded-lg">
         <div class="mb-2 text-center">
-            @if ($data['user']->sub_leader != 0)
-            <div class="hidden inline-block text-xl bg-gray-100 dark:bg-gray-900 px-5 py-0.5 rounded-2xl">
-                {{ $data['user']->sub_now }}
-                <span class="text-lg">級</span>
-            </div>
-            @endif
             <div class="inline-block text-2xl font-bold ml-5 align-bottom">{{ $data['user']->name }}</div>
         </div>
         <div class="text-xl h-8 mb-2 text-center">

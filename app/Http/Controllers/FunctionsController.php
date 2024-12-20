@@ -93,7 +93,7 @@ class FunctionsController extends Controller
 
     public function get_sales_detail($member_code){
         $user = User::where('member_code', $member_code)
-            ->select('name', 'member_code', 'phone_number', 'sales', 'depo_status', 'sub_leader', 'sub_now')
+            ->select('name', 'member_code', 'sales', 'depo_status')
             ->first();
 
         // 1月初めから現在月までの開始日と終了日を取得

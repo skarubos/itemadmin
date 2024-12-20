@@ -41,8 +41,8 @@ class HomeController extends Controller
         $member_code = $request->input('user_dashboard');
         $user = User::where('member_code', $member_code)->first();
         $latest = Trading::orderBy('updated_at', 'DESC')
-        ->select('updated_at')
-        ->first();
+            ->select('updated_at')
+            ->first();
         return view('dashboard', compact('user', 'latest'));
     }
  
@@ -188,7 +188,7 @@ class HomeController extends Controller
                 ->where('date', '>=', $startDate)
                 ->where('member_code', $member->member_code)
                 ->whereIn('trade_type', config('custom.sales_tradeTypesEigyosho'))
-                ->select('id', 'date', 'trade_type', 'amount')
+                ->select('id', 'member_code', 'date', 'trade_type', 'amount')
                 ->orderBy('date', 'ASC')
                 ->get();
             $groupTradings[] = $tradings;
@@ -197,16 +197,19 @@ class HomeController extends Controller
         return view('sub-detail', compact('user', 'groupMembers', 'groupTradings', 'currentDate'));
     }
 
-    public function sub_trade($trade_id) {
+    public function sub_trade($member_code, $trade_id) {
         $trade = Trading::with(['trade_type' => function($query) {
                 $query->select('trade_type', 'name');
             }])
             ->with(['user' => function($query) {
                 $query->select('member_code', 'name');
             }])
+            ->where('member_code', $member_code)
             ->where('id', $trade_id)
             ->select('id', 'member_code', 'date', 'trade_type', 'amount')
             ->first();
+        
+        abort_unless($trade, 404);
 
         $details = $details = TradeDetail::with('product')
             ->where('trade_id', $trade_id)

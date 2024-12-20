@@ -24,7 +24,7 @@
         @foreach($tradings as $trading)
             <div class="mb-2">
                 <a 
-                    href="/sub_trade/{{ $trading['id'] }}"
+                    href="/sub/{{ $groupMembers[$index]->member_code }}/trade/{{ $trading['id'] }}"
                     class="block max-w-72 mx-auto py-2 text-center bg-gray-100 dark:bg-gray-900 font-sans shadow-md bg-clip-border rounded-3xl"
                 >
                 <span class="text-lg">

@@ -15,7 +15,7 @@
         <table class="text-xs border border-gray-200">
             <thead class="pt-5 bg-gray-200 dark:bg-gray-800 dark:text-gray-100">
                 <tr>
-                    <th class="text-left min-w-50 py-2 px-2 border-b">商品名</th>
+                    <th class="text-left min-w-32 max-w-56 py-2 px-2 border-b"></th>
                 @foreach($tradings as $trading)
                     <th class="py-2 px-1 border-b">
                         {{ \Carbon\Carbon::parse($trading->date)->format('Y') }}<br>
@@ -25,7 +25,7 @@
                     <th class="py-2 px-2 border-b">現在</th>
                 </tr>
                 <tr>
-                    <th class="text-right min-w-50 py-2 px-2 border-b">合計</th>
+                    <th class="text-right min-w-32 max-w-56 py-2 px-2 border-b">合計</th>
                 @foreach($tradings as $trading)
                     @php // 「預け出し」の時は負の値に変更
                         $tradeType = $trading->trade_type;
@@ -40,7 +40,7 @@
             @php $i = 0; @endphp
             @foreach($amountsSelected as $amounts)
                 <tr class="border-b">
-                    <td class="min-w-50 py-2 px-2">{{ $products[$i] }}</td>
+                    <td class="min-w-32 max-w-56 py-2 px-2">{{ $products[$i] }}</td>
                 @foreach($amounts as $index => $amount)
                     @php // 「預け出し」の時は負の値に変更
                         if ($index < count($tradings)) {

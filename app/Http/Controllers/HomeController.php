@@ -53,7 +53,7 @@ class HomeController extends Controller
     public function sales_home() {
         // depo_statusが0ではない行を取得
         $users = User::where('status', 1)
-            ->select('id', 'name', 'member_code', 'sales', 'latest_trade', 'sub_leader', 'sub_now')
+            ->select('id', 'name', 'member_code', 'sales', 'latest_trade', 'sub_leader', 'sub_number', 'sub_now')
             ->orderBy('priority', 'ASC')
             ->get();
         // latest_tradeに基づいて各ユーザーの最新取引を取得

@@ -70,7 +70,7 @@ class FunctionsController extends Controller
                 ->count();
     
             // sub_nowカラムを更新、上限を5に設定
-            $user->sub_now = min($nums, 5);
+            $user->sub_now = min($nums*100, 500);
             $user->save();
         }
     }

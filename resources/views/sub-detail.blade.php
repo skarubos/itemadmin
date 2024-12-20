@@ -10,7 +10,7 @@
             <div class="inline-block text-2xl font-bold ml-5 align-bottom">{{ $user->name }}</div>
         </div>
         <div class="text-2xl py-5 mb-2 text-center bg-gray-100 dark:bg-gray-900 rounded-2xl">
-            <p class="">資格手当：<span class="font-bold text-3xl pr-1">{{ $user->sub_now * 100 }}</span>円</p>
+            <p class="">資格手当：<span class="font-bold text-3xl pr-1">{{ $user->sub_now }}</span>円</p>
             <p class="text-base">（{{ \Carbon\Carbon::parse($currentDate)->format('n月j日') }}現在）</p>
         </div>
         <div class="text-center text-base pt-8">

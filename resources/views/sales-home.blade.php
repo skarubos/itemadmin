@@ -6,36 +6,38 @@
             <p class="text-center text-lg font-bold leading-snug tracking-normal antialiased">
                 実績
             </p>
-            <a href="/refresh_sales">
-            </a>
         </div>
         <div class="grid grid-cols-1 divide-y">
             @foreach($users as $user)
             <div class="py-2 font-sans text-xl">
-                <a href="/sales_detail/{{ $user['member_code'] }}" class="flex justify-between ">
-                <div class="flex justify-start">
-                @if ($user['sub_leader'] != 0)
-                    <div class="pr-1">
-                        ({{ $user['sub_now'] }})
-                    </div>
-                @endif
+                <a href="/sales_detail/{{ $user['member_code'] }}" class="">
+                <div class="flex justify-between">
                     <div class="">
                         {{ $user['name'] }}
                     </div>
-                </div>
-                <div class="flex justify-end">
-                    <div class="text-xs text-right">
-                        @if(isset($latestTrades[$user->id]))
-                            {{ \Carbon\Carbon::parse($latestTrades[$user->id]->date)->format('y/n/j') }}<br>
-                            {{ $latestTrades[$user->id]->amount }}
-                        @else
-                            -
-                        @endif
+                    <div class="flex">
+                        <div class="text-xs text-right">
+                            @if(isset($latestTrades[$user->id]))
+                                {{ \Carbon\Carbon::parse($latestTrades[$user->id]->date)->format('y/n/j') }}<br>
+                                {{ $latestTrades[$user->id]->amount }}
+                            @else
+                                -
+                            @endif
+                        </div>
+                        <div class="min-w-10 text-right pl-0 sm:pl-3">
+                            {{ $user['sales'] }}
+                        </div>
                     </div>
-                    <div class="min-w-10 text-right pl-0 sm:pl-3">
-                        {{ $user['sales'] }}
-                    </div>
                 </div>
+                </a>
+                @if ($user['sub_leader'] != 0)
+                <a href="/sub/{{ $user['member_code'] }}" class="">
+                    <div class="text-lg text-center py-0.5 mx-auto bg-gray-100 dark:bg-gray-900 rounded-2xl">
+                        {{ $user['sub_now'] }}
+                        （{{ $user->sub_number / 100 }}級）
+                    </div>
+                </a>
+                @endif
             </div>
             @endforeach
         </div>

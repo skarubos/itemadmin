@@ -1,5 +1,5 @@
 <x-guest-layout>
-    <div class="p-6">
+    <div class="p-6 text-lg text-gray-900 dark:text-gray-100">
     <!-- Session Status -->
     <x-auth-session-status :status="session('status')" />
 
@@ -15,16 +15,16 @@
         
         <!-- Member Code -->
         <div>
-            <p class="text-lg font-bold">営業所コード</p>
-            <p class="text-lg ">（例:3851-00123の場合→123）</p>
+            <p class="text-xl font-bold">営業所コード</p>
+            <p class="text-lg ">（例:3851-00123の場合 → 123）</p>
             <x-text-input id="member_code" class="mt-1 w-full" type="text" name="member_code" :value="old('member_code')" required autofocus autocomplete="username" />
-            <p class="pt-1">※「前半の4桁」および「頭の0」を除いた数字をご入力ください。</p>
+            <p class="pt-1">※「前半の4桁」および「後半の頭の0」を<span class="font-bold">除いた数字</span>のみをご入力ください。</p>
             <x-input-error :messages="$errors->get('member_code')" class="mt-2" />
         </div>
 
         <!-- Password -->
         <div class="mt-10">
-            <p class="text-lg font-bold">パスワード</p>
+            <p class="text-xl font-bold">パスワード</p>
             <p class="text-lg ">（ご登録の電話番号の下4桁）</p>
             <x-text-input id="password" class="block mt-1 w-full"
                             type="password"

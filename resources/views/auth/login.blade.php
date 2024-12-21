@@ -15,8 +15,9 @@
         
         <!-- Member Code -->
         <div>
-            <x-input-label for="member_code" value="営業所コード（例：3851-00011の場合→11）" />
-            <x-text-input id="member_code" class="block mt-1 w-full" type="text" name="member_code" :value="old('member_code')" required autofocus autocomplete="username" />
+            <x-input-label for="member_code" value="営業所コード（頭の0を除く：3851-00123の場合→123）" />
+            <p class="inline-block">3851-</p>
+            <x-text-input id="member_code" class="mt-1 w-2/3" type="text" name="member_code" :value="old('member_code')" required autofocus autocomplete="username" />
             <x-input-error :messages="$errors->get('member_code')" class="mt-2" />
         </div>
 

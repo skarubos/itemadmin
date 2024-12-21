@@ -15,16 +15,17 @@
         
         <!-- Member Code -->
         <div>
-            <x-input-label for="member_code" value="営業所コード（頭の0を除く：3851-00123の場合→123）" />
-            <p class="inline-block">3851-</p>
-            <x-text-input id="member_code" class="mt-1 w-2/3" type="text" name="member_code" :value="old('member_code')" required autofocus autocomplete="username" />
+            <p class="text-lg font-bold">営業所コード</p>
+            <p class="text-lg ">（例:3851-00123の場合→123）</p>
+            <x-text-input id="member_code" class="mt-1 w-full" type="text" name="member_code" :value="old('member_code')" required autofocus autocomplete="username" />
+            <p class="pt-1">※「前半の4桁」および「頭の0」を除いた数字をご入力ください。</p>
             <x-input-error :messages="$errors->get('member_code')" class="mt-2" />
         </div>
 
         <!-- Password -->
         <div class="mt-10">
-            <x-input-label for="password" :value="__('パスワード（ご登録の電話番号の下4桁）')" />
-
+            <p class="text-lg font-bold">パスワード</p>
+            <p class="text-lg ">（ご登録の電話番号の下4桁）</p>
             <x-text-input id="password" class="block mt-1 w-full"
                             type="password"
                             name="password"

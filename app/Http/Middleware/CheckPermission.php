@@ -42,7 +42,7 @@ class CheckPermission
 
         // ルートが'sub_trade'の時、グループメンバーのmember_codeの場合はアクセス許可
         $currentRouteName = $request->route()->getName();
-        if ($currentRouteName === 'sub.trade'){
+        if ($currentRouteName === 'trade.detail'){
             // ログインユーザーのsub_leaderとsub_numberが一致するユーザーを取得
             $groupUsers = User::where('sub_number', $userSub)
             ->select('member_code')

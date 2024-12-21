@@ -15,11 +15,12 @@ class Trading extends Model
      * @var string
      */
     protected $table = 'tradings';
+    
     public function user()
     {
         return $this->belongsTo(User::class, 'member_code', 'member_code');
     }
-    public function trade_type()
+    public function tradeType()
     {
         return $this->belongsTo(TradeType::class, 'trade_type', 'trade_type');
     }

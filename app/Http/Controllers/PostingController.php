@@ -336,6 +336,6 @@ class PostingController extends Controller
             return back()->withErrors(['error' => 'データの更新処理に失敗しました。', 'エラーログ保存先：\storage\logs\laravel.log']);
         }
         
-        return redirect()->route('dashboard')->with('success', 'データの更新が正常に行われました。【最新注文&年間実績&資格手当】');
+        return redirect()->route('sales')->with('success', 'データの更新が正常に行われました。【最新注文&年間実績&資格手当】');
     }
 }

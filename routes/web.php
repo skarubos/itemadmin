@@ -22,8 +22,8 @@ Route::middleware('auth')->group(function () {
 
     // depo_home, sales_home, refresh_salesはpermissionが1以下ならアクセス可能
     Route::middleware('checkPermission:1')->group(function () {
-        Route::get('/depo', [HomeController::class, 'depo_home'])->name('depo_home');
-        Route::get('/sales', [HomeController::class, 'sales_home'])->name('sales_home');
+        Route::get('/depo', [HomeController::class, 'depo_home'])->name('depo');
+        Route::get('/sales', [HomeController::class, 'sales_home'])->name('sales');
         Route::get('/refresh_sales', [PostingController::class, 'refresh_sales'])->name('refresh_sales');
         Route::get('/upload', [HomeController::class, 'upload'])->name('upload');
         Route::post('/upload_check', [PostingController::class, 'upload_check'])->name('upload_check');
@@ -34,14 +34,15 @@ Route::middleware('auth')->group(function () {
         Route::post('/show_dashboard', [HomeController::class, 'show_dashboard'])->name('show_dashboard');
     });
 
-    // depo_detail, depo_detail_history, sales_detailは、permission=1なら誰のデータでも閲覧可能
+    // permission=1なら誰のデータでも閲覧可能
     // permission=2の場合は、自分のデータのみ閲覧可能
     Route::middleware('checkPermission:2')->group(function () {
-        Route::get('/depo_detail/{member_code}', [HomeController::class, 'depo_detail'])->name('depo_detail');
-        Route::get('/depo_detail_history/{member_code}', [HomeController::class, 'depo_detail_history'])->name('depo_detail_history');
-        Route::get('/sales_detail/{member_code}', [HomeController::class, 'sales_detail'])->name('sales_detail');
+        Route::get('/depo/member/{member_code}', [HomeController::class, 'depo_detail'])->name('depo.member');
+        Route::get('/depo/member/{member_code}/history', [HomeController::class, 'depo_detail_history'])->name('depo.history');
+        Route::get('/sales/member/{member_code}', [HomeController::class, 'sales_detail'])->name('sales.member');
+        Route::get('/sales/member/{member_code}/list', [HomeController::class, 'sales_list'])->name('sales.list');
         Route::get('/sub/{member_code}', [HomeController::class, 'sub_detail'])->name('sub.detail');
-        Route::get('/sub/{member_code}/trade/{trade_id}', [HomeController::class, 'sub_trade'])->name('sub.trade');
+        Route::get('/trade/{member_code}/{trade_id}', [HomeController::class, 'trade_detail'])->name('trade.detail');
     });
 });
 

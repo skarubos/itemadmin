@@ -12,7 +12,7 @@
         </div>
         <div class="mb-10">
             <a 
-                href="/sales_detail/{{ $user['member_code'] }}"
+                href="/sales/member/{{ $user['member_code'] }}"
                 class="block w-4/5 mx-auto py-10 text-center bg-gray-100 dark:bg-gray-900 text-2xl font-sans drop-shadow-xl bg-clip-border rounded-2xl text-2xl"
             >
                 注文履歴
@@ -20,7 +20,7 @@
         </div>
         <div class="mb-10">
             <a 
-                href="/depo_detail/{{ $user['member_code'] }}"
+                href="/depo/member/{{ $user['member_code'] }}"
                 class="block w-4/5 mx-auto py-10 text-center bg-gray-100 dark:bg-gray-900 text-2xl font-sans drop-shadow-xl bg-clip-border rounded-2xl text-2xl"
             >
                 預け

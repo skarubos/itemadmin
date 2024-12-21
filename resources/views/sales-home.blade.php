@@ -3,14 +3,17 @@
     <div class="max-w-xl mx-auto lg:px-8">
     <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 px-6 py-6 shadow-sm bg-clip-border rounded-lg">
         <div class="my-4">
-            <p class="text-center text-lg font-bold leading-snug tracking-normal antialiased">
+            <p class="text-center text-xl font-bold leading-snug tracking-normal antialiased">
                 実績
+            </p>
+            <p class="mx-auto pt-1 text-center">
+                最終更新：{{ \Carbon\Carbon::parse($latest->updated_at)->format('Y年n月j日') }}
             </p>
         </div>
         <div class="grid grid-cols-1 divide-y">
             @foreach($users as $user)
             <div class="py-2 font-sans text-xl">
-                <a href="/sales_detail/{{ $user['member_code'] }}" class="">
+                <a href="/sales/member/{{ $user['member_code'] }}" class="">
                 <div class="flex justify-between">
                     <div class="">
                         {{ $user['name'] }}

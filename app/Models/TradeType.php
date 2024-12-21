@@ -22,7 +22,8 @@ class TradeType extends Model
     }
 
     // Tradingsリレーションの追加
-    public function tradingType() {
+    public function tradingType()
+    {
         return $this->hasMany(Trading::class, 'trade_type', 'trade_type');
     }
 

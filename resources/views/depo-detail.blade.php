@@ -10,7 +10,7 @@
                 </p>
             </div>
             <div class="w-2/6">
-                <a href="/depo_detail_history/{{ $data['user']['member_code'] }}">
+                <a href="/depo/member/{{ $data['user']['member_code'] }}/history">
                     <x-primary-button class="w-full items-center justify-center px-3">
                         履歴を<br>表示
                     </x-primary-button>

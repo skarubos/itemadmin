@@ -26,7 +26,7 @@ class HomeController extends Controller
     public function dashboard(){
         $user = Auth::user();
         if ($user->permission == 1) {
-            return redirect()->route('sales_home');
+            return redirect()->route('sales');
         } else {
             $latest = Trading::orderBy('updated_at', 'DESC')
             ->select('updated_at')
@@ -68,12 +68,54 @@ class HomeController extends Controller
                 }
             }
         }
-        return view('sales-home', compact('users', 'latestTrades'));
+        $latest = Trading::orderBy('updated_at', 'DESC')
+            ->select('updated_at')
+            ->first();
+        return view('sales-home', compact('users', 'latestTrades', 'latest'));
     }
 
     public function sales_detail($member_code){
         $data = $this->functionsController->get_sales_detail($member_code);
         return view('sales-detail', compact('data'));
+    }
+
+    public function sales_list($member_code){
+        $user = User::where('member_code', $member_code)
+            ->select('member_code', 'name')
+            ->first();
+    
+        $currentDate = Carbon::now();
+        $tradings = Trading::with(['tradeType' => function($query) {
+                $query->select('trade_type', 'name');
+            }])
+            ->where('member_code', $member_code)
+            ->whereYear('date', $currentDate->year)
+            ->select('id', 'date', 'trade_type', 'amount')
+            ->orderBy('date', 'DESC')
+            ->get();
+
+        return view('sales-list', compact('user', 'tradings', 'currentDate'));
+    }
+
+    public function sales_trade($member_code, $trade_id) {
+        $trade = Trading::with(['tradeType' => function($query) {
+                $query->select('trade_type', 'name', 'caption');
+            }])
+            ->with(['user' => function($query) {
+                $query->select('member_code', 'name');
+            }])
+            ->where('member_code', $member_code)
+            ->where('id', $trade_id)
+            ->select('id', 'member_code', 'date', 'trade_type', 'amount')
+            ->first();
+        
+        abort_unless($trade, 404);
+
+        $details = TradeDetail::with('product')
+            ->where('trade_id', $trade_id)
+            ->get();
+
+        return view('sales-trade', compact('trade', 'details'));
     }
 
     public function depo_home() {
@@ -182,10 +224,7 @@ class HomeController extends Controller
         $currentDate = Carbon::now();
         $startDate = $currentDate->copy()->subMonths(config('custom.sub_monthsCovered'))->addDay();
         foreach ($groupMembers as $member) {
-            $tradings = Trading::with(['trade_type' => function($query) {
-                    $query->select('trade_type', 'name');
-                }])
-                ->where('date', '>=', $startDate)
+            $tradings = Trading::where('date', '>=', $startDate)
                 ->where('member_code', $member->member_code)
                 ->whereIn('trade_type', config('custom.sales_tradeTypesEigyosho'))
                 ->select('id', 'member_code', 'date', 'trade_type', 'amount')
@@ -197,8 +236,8 @@ class HomeController extends Controller
         return view('sub-detail', compact('user', 'groupMembers', 'groupTradings', 'currentDate'));
     }
 
-    public function sub_trade($member_code, $trade_id) {
-        $trade = Trading::with(['trade_type' => function($query) {
+    public function trade_detail($member_code, $trade_id) {
+        $trade = Trading::with(['tradeType' => function($query) {
                 $query->select('trade_type', 'name');
             }])
             ->with(['user' => function($query) {
@@ -215,7 +254,7 @@ class HomeController extends Controller
             ->where('trade_id', $trade_id)
             ->get();
 
-        return view('sub-trade', compact('trade', 'details'));
+        return view('trade-detail', compact('trade', 'details'));
     }
 
     public function admin(Request $request){

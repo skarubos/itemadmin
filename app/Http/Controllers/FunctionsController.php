@@ -91,30 +91,48 @@ class FunctionsController extends Controller
         ];
     }
 
-    public function get_sales_detail($member_code){
+    public function get_sales_detail($member_code, $years){
         $user = User::where('member_code', $member_code)
             ->select('name', 'member_code', 'sales', 'depo_status')
             ->first();
 
-        // 1月初めから現在月までの開始日と終了日を取得
-        $startOfYear = Carbon::now()->startOfYear();
+
+        $currentYear = Carbon::now()->year;
         $currentMonth = Carbon::now()->month;
-        $currentDate = Carbon::now();
-        // 合計実績の計算
-        $details = [];
-        for ($month = 1; $month <= $currentMonth; $month++) {
-            $startOfMonth = Carbon::createFromDate(Carbon::now()->year, $month, 1)->startOfMonth();
-            $endOfMonth = Carbon::createFromDate(Carbon::now()->year, $month, 1)->endOfMonth();
-            $monthlySales = Trading::where('member_code', $member_code)
-                ->whereBetween('date', [$startOfMonth, $endOfMonth])
-                ->whereIn('trade_type', config('custom.sales_tradeTypes'))
-                ->sum('amount');
-            $details[] = $monthlySales;
+
+        // 取得する年の西暦を取得
+        $yearArr = [];
+        for ($i = 0; $i < $years; $i++) {
+            $yearArr[] = $currentYear - $i;
         }
-        
+        $yearArr = array_reverse($yearArr);
+
+        // 月ごとの実績を取得
+        $yearlySales = [];
+        $totals = array_fill(0, $years, 0);
+        for ($month = 1; $month <= 12; $month++) {
+            $monthlySales = [];
+            foreach ($yearArr as $i => $year) {
+                $monthlySum = null;
+                if (!($year === $currentYear && $month > $currentMonth)) {
+                    $startOfMonth = Carbon::createFromDate($year, $month, 1)->startOfMonth();
+                    $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+                    $monthlySum = Trading::where('member_code', $member_code)
+                        ->whereBetween('date', [$startOfMonth, $endOfMonth])
+                        ->whereIn('trade_type', config('custom.sales_tradeTypes'))
+                        ->sum('amount');
+                }
+                $monthlySales[] = $monthlySum;
+                $totals[$i] += $monthlySum;
+            }
+            $yearlySales[] = $monthlySales;
+        }
+
         return [
             'user' => $user,
-            'details' => $details,
+            'years' => $yearArr,
+            'yearlySales' => $yearlySales,
+            'totals' => $totals,
         ];
     }
 

@@ -75,7 +75,8 @@ class HomeController extends Controller
     }
 
     public function sales_detail($member_code){
-        $data = $this->functionsController->get_sales_detail($member_code);
+        $years = config('custom.sales_howManyYears');
+        $data = $this->functionsController->get_sales_detail($member_code, $years);
         return view('sales-detail', compact('data'));
     }
 

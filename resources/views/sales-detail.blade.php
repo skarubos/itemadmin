@@ -23,20 +23,26 @@
         <table class="min-w-40 mx-auto border border-gray-200">
             <thead class="pt-5 bg-gray-200 dark:bg-gray-800 dark:text-gray-100">
                 <tr>
-                    <th class="py-2 px-4 border-b">2024</th>
-                    <th class="py-2 px-4 border-b">セット</th>
+                    <th class="py-2 px-4 border-b"></th>
+                    @foreach($data['years'] as $year)
+                    <th class="py-2 px-4 border-b">{{ $year }}</th>
+                    @endforeach
                 </tr>
             </thead>
             <tbody>
-                @foreach($data['details'] as $index => $sales)
+                @foreach($data['yearlySales'] as $index => $monthlySales)
                 <tr class="border-b">
                     <td class="py-2 px-4 text-center">{{ $index + 1 }}月</td>
-                    <td class="py-2 px-4 text-center">{{ $sales > 0 ? $sales : '-' }}</td>
+                    @foreach($monthlySales as $sales)
+                    <td class="py-2 px-4 text-center">{{ $sales === 0 ? '-' : ($sales ?? '') }}</td>
+                    @endforeach
                 </tr>
                 @endforeach
                 <tr class="border-t">
                     <td class="py-2 px-4 text-center font-bold">合計</td>
-                    <td class="py-2 px-4 text-center font-bold">{{ array_sum($data['details']) }}</td>
+                    @foreach($data['totals'] as $total)
+                    <td class="py-2 px-4 text-center font-bold">{{ $total }}</td>
+                    @endforeach
                 </tr>
             </tbody>
         </table>

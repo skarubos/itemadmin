@@ -1,6 +1,10 @@
 <?php
 
 return [
+
+    // 個人実績ページで表示する年数
+    'sales_howManyYears' => '1',
+
     // 【実績】
     // 実績の対象となる取引タイプ
     'sales_tradeTypes' => [10, 11, 12, 20, 110, 111],

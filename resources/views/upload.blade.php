@@ -1,22 +1,5 @@
 <x-app-layout>
 
-@if ($errors->any())
-    <div class="block bg-red-500 text-white p-10 py-2">
-        <ul>
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
-
-<!-- 書き込み成功メッセージ -->
-@if (session('success'))
-    <div class="block bg-green-500 text-white p-10 py-2">
-        {{ session('success') }}
-    </div>
-@endif
-
 <div class="py-6">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 overflow-hidden pb-5 shadow-sm sm:rounded-lg">

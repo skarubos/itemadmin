@@ -20,7 +20,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // depo_home, sales_home, refresh_salesはpermissionが1以下ならアクセス可能
+    // depo_home, sales_home, refresh_salesはpermissionが1ならアクセス可能
     Route::middleware('checkPermission:1')->group(function () {
         Route::get('/depo', [HomeController::class, 'depo_home'])->name('depo');
         Route::get('/sales', [HomeController::class, 'sales_home'])->name('sales');

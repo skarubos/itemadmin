@@ -29,11 +29,23 @@
 
             <!-- Page Content -->
             <main>
-                <!-- @if(session('success'))
-                    <div id="flash-message" class="block bg-green-500 text-white p-2 mb-4">
+                @if ($errors->any())
+                    <div class="block bg-red-500 text-white p-10 py-2">
+                        <ul>
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <!-- 書き込み成功メッセージ -->
+                @if (session('success'))
+                    <div class="block bg-green-500 text-white p-10 py-2">
                         {{ session('success') }}
                     </div>
-                @endif -->
+                @endif
+                
                 {{ $slot }}
             </main>
         </div>

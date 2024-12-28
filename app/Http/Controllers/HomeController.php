@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Product;
 use App\Models\DepoRealtime;
@@ -292,6 +293,54 @@ class HomeController extends Controller
         return view('admin', compact('users', 'trades', 'display', 'details'));
     }
 
+    public function refresh_member(Request $request) {
+        $member_code = $request->input('member_code');
+        DB::beginTransaction();
+        try {
+            $this->functionsController->refresh($member_code);
+            DB::commit();
+            return redirect()->route('sales')
+                ->with('success', $member_code . ':データの更新が正常に行われました。【最新注文&年間実績&資格手当】');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('全部更新(refresh_all)に失敗: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'データの更新処理に失敗しました。', 'エラーログ保存先：\storage\logs\laravel.log']);
+        }
+    }
+
+    public function refresh_all() {
+        $users = User::where('status', 1)->get();
+        DB::beginTransaction();
+        try {
+            $this->functionsController->refresh($users);
+            DB::commit();
+            return redirect()->route('sales')
+                ->with('success', 'データの更新が正常に行われました。【最新注文&年間実績&資格手当】');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('全部更新(refresh_all)に失敗: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'データの更新処理に失敗しました。', 'エラーログ保存先：\storage\logs\laravel.log']);
+        }
+    }
+
+    public function reset_all() {
+        DB::beginTransaction();
+        try {
+            DB::table('users')->where('status', 1)
+                ->update([
+                    'sales' => 0,
+                    'latest_trade' => null,
+                    'sub_now' => 0,
+                ]);
+            DB::commit();
+            return redirect()->route('sales')
+                ->with('success', '最新注文&年間実績&資格手当をリセットしました。');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('更新のリセット(reset_all)に失敗: ' . $e->getMessage());
+            return back()->withErrors(['error' => '更新のリセット(reset_all)に失敗しました。', 'エラーログ保存先：\storage\logs\laravel.log']);
+        }
+    }
 
     public function test_(){
         // URLからHTMLを取得

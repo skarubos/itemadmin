@@ -308,34 +308,4 @@ class PostingController extends Controller
             return back()->withErrors(['error' => '取引の削除中にエラーが発生しました: ' . $e->getMessage()]);
         }
     }
-
-    public function refresh_sales() {
-        DB::beginTransaction();
-        try {
-            // 【最新注文&年間実績（年初からの累計注文セット数）を更新】
-            $users = User::where('status', 1)->get();
-            foreach ($users as $user) {
-                // 最新注文
-                $latest =  $this->functionsController->latestTrade($user->member_code);
-                $user->latest_trade = $latest ? $latest->id : null;
-                // 年間実績
-                $sales = $this->functionsController->yearlySales($user->member_code);
-                $user->sales = $sales;
-                $user->save();
-            }
-
-            // 【資格手当（過去6ヵ月に実績のあるグループメンバーの人数）を更新】
-            $this->functionsController->subRefresh($users);
-            
-            DB::commit();
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            // report($e);
-            \Log::error('Data update(refresh) failed: ' . $e->getMessage());
-            return back()->withErrors(['error' => 'データの更新処理に失敗しました。', 'エラーログ保存先：\storage\logs\laravel.log']);
-        }
-        
-        return redirect()->route('sales')->with('success', 'データの更新が正常に行われました。【最新注文&年間実績&資格手当】');
-    }
 }

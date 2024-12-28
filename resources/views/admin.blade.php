@@ -21,7 +21,7 @@
 
                 <!-- 更新 -->
                 <div class="p-10">
-                    <a href="/refresh_sales">
+                    <a href="/refresh_all">
                         <x-primary-button class="px-6 items-center justify-center">
                             Refresh
                         </x-primary-button>
@@ -65,6 +65,24 @@
                         </div>
                     </form>
 
+                    <!-- 個人を更新 -->
+                    <form action="/refresh_member" method="POST" enctype="multipart/form-data" class="mb-5">
+                        @csrf
+                        <label for="member_code" class="text-sm font-medium">更新するユーザーを選択</label>
+                        <div class="">
+                        <select name="member_code" id="member_code" class="w-2/6 min-w-56 dark:bg-gray-900 mt-1 mr-5 py-2 px-8 shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
+                            @foreach($users as $user)
+                                <option value="{{ $user['member_code'] }}" class="">
+                                    {{ $user->name . "（" . $user->sub_now . "）" }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <x-primary-button class="text-red-600 px-5 my-2 items-center justify-center">
+                            refresh
+                        </x-primary-button>
+                        </div>
+                    </form>
+
                     <!-- 削除 -->
                     <form action="/delete" method="POST" enctype="multipart/form-data">
                         @csrf
@@ -82,6 +100,15 @@
                         </x-primary-button>
                         </div>
                     </form>
+
+                    <!-- 実績＆最新の取引＆資格手当をリセット -->
+                    <div class="p-10">
+                        <a href="/reset_all">
+                            <x-danger-button class="px-6 items-center justify-center">
+                                Reset
+                            </x-danger-button>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

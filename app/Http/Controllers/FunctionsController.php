@@ -17,65 +17,195 @@ use DOMXPath;
 
 class FunctionsController extends Controller
 {
-    // 任意のユーザーの年間実績を集計
-    public function yearlySales($member_code) {
-        $startOfYear = Carbon::now()->startOfYear();
-        $sales = Trading::where('member_code', $member_code)
-        ->where('date', '>=', $startOfYear)
-        ->whereIn('trade_type', config('custom.sales_tradeTypes'))
-        ->sum('amount');
+    /**
+     * 最新注文&年間実績&資格手当を更新
+     *（特定のユーザーのみ OR 全ユーザー　両対応）
+     *
+     * @param $codeOrUsers 特定のユーザーのmember_code OR 全ユーザーのコレクション
+     */
+    public function refresh($codeOrUsers) {
+        if (is_numeric($codeOrUsers)) {
+            // 引数が単体（$member_code）の場合、単一ユーザーの処理を実行
+            $user = User::where('member_code', $codeOrUsers)->first();
+            // 年間実績
+            $params = $this->getSalesParam();
+            $sales = $this->getSalesForMember($codeOrUsers, $params['startDate'], $params['tradeTypes']);
+            $user->sales = $sales;
+            // 最新注文
+            $params = $this->getLatestParam();
+            $latest = $this->getLatestForMember($codeOrUsers, $params['tradeTypes'], $params['idouMinSet']);
+            $user->latest_trade = $latest ? $latest->id : null;
+            // 資格手当(グルーブに所属しておりリーダーでもない場合、そのリーダーの資格手当を再計算)
+            if ($user->sub_number !== 0 && $user->sub_leader == 0) {
+                $subLeaderValue = $user->sub_number;
+                // 該当するサブリーダー$subLeaderを取得
+                $subLeader = User::where('sub_leader', $subLeaderValue)->first();
+                $params = $this->getSubParam();
+                $num = $this->getSubForMember($subLeaderValue, $params['startDate'], $params['tradeTypes'], $params['subMinSet']);
 
+                // 該当のサブリーダーのsub_nowカラムを更新、上限を500に設定
+                $subLeader->sub_now = min($num*100, 500);
+                $subLeader->save();
+            }
+            $user->save();
+        } elseif (get_class($codeOrUsers) === 'Illuminate\Database\Eloquent\Collection') {
+            // 引数がコレクション（$users）の場合、各ユーザーに対して処理を実行
+            $this->refresh_sales($codeOrUsers);
+            $this->refresh_latest($codeOrUsers);
+            $this->refresh_sub($codeOrUsers);
+        } else {
+            dd($codeOrUsers);
+            // 想定外の引数の場合
+            throw new \InvalidArgumentException('更新すべき対象として、想定外の引数が渡されました。' . $codeOrUsers);
+        }
+    }
+
+    // 全ユーザーの実績を更新
+    public function refresh_sales($users) {
+        $params = $this->getSalesParam();
+        foreach ($users as $user) {
+            $sales = $this->getSalesForMember($user->member_code, $params['startDate'], $params['tradeTypes']);
+            $user->sales = $sales;
+            $user->save();
+        }
+    }
+    // 全ユーザーの最新取引を更新
+    public function refresh_latest($users) {
+        $params = $this->getLatestParam();
+        foreach ($users as $user) {
+            $latest = $this->getLatestForMember($user->member_code, $params['tradeTypes'], $params['idouMinSet']);
+            $user->latest_trade = $latest ? $latest->id : null;
+            $user->save();
+        }
+    }
+    // 全サブリーダーの資格手当を更新
+    public function refresh_sub($users) {
+        $params = $this->getSubParam();
+
+        // sub_leaderの値が0でないユーザーを取得
+        $usersWithSubLeader = $users->filter(function ($user) {
+            return $user->sub_leader !== 0;
+        });
+        // $subs配列にsub_leaderの値を格納
+        $subs = $usersWithSubLeader->pluck('sub_leader')->toArray();
+
+        foreach ($usersWithSubLeader as $user) {
+            // 過去6ヶ月の実績を持つユーザーの数を取得
+            $subLeaderValue = $user->sub_leader;
+            $num = $this->getSubForMember($subLeaderValue, $params['startDate'], $params['tradeTypes'], $params['subMinSet']);
+    
+            // sub_nowカラムを更新、上限を500に設定
+            $user->sub_now = min($num*100, 500);
+            $user->save();
+        }
+    }
+
+    private function getSalesParam() {
+        // 今年の最初の日付を取得
+        $startOfYear = Carbon::now()->startOfYear();
+        // 注文対象となる取引タイプを取得
+        $tradeTypes = config('custom.sales_tradeTypes');
+        return [
+            'startDate' => $startOfYear,
+            'tradeTypes' => $tradeTypes,
+        ];
+    }
+    private function getLatestParam() {
+        // 最新の注文にカウントする取引タイプの配列（移動20を除く）
+        $tradeTypes = array_diff(config('custom.sales_tradeTypes'), [20]);
+        // 最新注文の対象となる最小移動合計セット数
+        $idouMinSet = config('custom.idou_minSet');
+        return [
+            'tradeTypes' => $tradeTypes,
+            'idouMinSet' => $idouMinSet,
+        ];
+    }
+    private function getSubParam() {
+        // 資格手当の対象となる最初の日付$startDateを取得
+        $currentDate = Carbon::now();
+        $startDate = $currentDate->copy()->subMonths(config('custom.sub_monthsCovered'))->addDay();
+        // 資格手当の対象となる取引タイプを取得
+        $tradeTypes = config('custom.sales_tradeTypesEigyosho');
+        // 資格手当の対象となる最小合計セット数を取得
+        $subMinSet = config('custom.sub_minSet');
+        return [
+            'startDate' => $startDate,
+            'tradeTypes' => $tradeTypes,
+            'subMinSet' => $subMinSet,
+        ];
+    }
+
+    /**
+     * 任意のユーザーの合計実績を取得
+     *
+     * @param string $member_code
+     * @param mixed $startDate 集計開始日
+     * @param array $tradeTypes 実績カウントする取引タイプの配列
+     * @return int 取引数量の合計
+     */
+    private function getSalesForMember($member_code, $startDate, $tradeTypes) {
+        $sales = Trading::where('member_code', $member_code)
+            ->where('date', '>=', $startDate)
+            ->whereIn('trade_type', $tradeTypes)
+            ->sum('amount');
         return $sales;
     }
-    // 任意のユーザーの最新の注文を検索
-    public function latestTrade($member_code) {
-        // 移動(取引タイプ20)は２０セット以上のみ最新の取引として取得
-        $tradeTypes = array_diff(config('custom.sales_tradeTypes'), [20]);
+
+    /**
+     * 任意のユーザーの最新の注文を検索
+     *
+     * @param string $member_code
+     * @param array $tradeTypes 最新の注文にカウントする取引タイプの配列（必ず移動20を除くこと！）
+     * @param int $idouMinSet 最新注文の対象となる最小移動合計セット数
+     * @return int 取引ID
+     */
+    private function getLatestForMember($member_code, $tradeTypes, $idouMinSet) {
         $latest = Trading::where('member_code', $member_code)
-            ->where(function($query) use ($tradeTypes) {
+            ->where(function($query) use ($tradeTypes, $idouMinSet) {
                 $query->whereIn('trade_type', $tradeTypes)
-                    ->orWhere(function($query) {
+                    ->orWhere(function($query) use ($idouMinSet) {
                         $query->where('trade_type', 20)
-                                ->where('amount', '>=', 20);
+                            ->where('amount', '>=', $idouMinSet);
                     });
             })
             ->orderBy('date', 'DESC')
             ->select('id')
             ->first();
-    
         return $latest;
-    }
+    }    
     
-    
-    // 資格手当（過去6ヵ月の実績が昇級条件を満たすグループメンバーの人数）を更新
-    public function subRefresh($users) {
-        // sub_leaderの値が0でないユーザーを取得
-        $usersWithSubLeader = $users->filter(function ($user) {
-            return $user->sub_leader !== 0;
-        });
-        $currentDate = Carbon::now();
-        $startDate = $currentDate->copy()->subMonths(config('custom.sub_monthsCovered'))->addDay();
-        
-        // $subs配列にsub_leaderの値を格納
-        $subs = $usersWithSubLeader->pluck('sub_leader')->toArray();
-        foreach ($usersWithSubLeader as $user) {
-            $subLeaderValue = $user->sub_leader;
-            // 過去6ヶ月の実績を持つユーザーの数を取得
-            $nums = User::where('sub_number', $subLeaderValue)
-                ->whereHas('tradings', function ($query) use ($startDate) {
+    /**
+     * 任意のサブリーダーの資格手当を取得
+     *
+     * @param string $subLeaderValue グループナンバー
+     * @param mixed $startDate 資格手当の対象となる最初の日付
+     * @param array $tradeTypes 実績対象の取引タイプの配列
+     * @param int $subMinSet 資格手当対象となる最小合計セット数
+     * @return int 資格手当対象となる傘下営業所の人数
+     */
+    private function getSubForMember($subLeaderValue, $startDate, $tradeTypes, $subMinSet) {
+        $num = User::where('sub_number', $subLeaderValue)
+                ->whereHas('tradings', function ($query) use ($startDate, $tradeTypes, $subMinSet) {
                     $query->where('date', '>=', $startDate)
-                        ->whereIn('trade_type', config('custom.sales_tradeTypesEigyosho'))
-                        ->havingRaw('SUM(amount) > ?', [config('custom.sub_minSet')]);
+                        ->whereIn('trade_type', $tradeTypes)
+                        ->havingRaw('SUM(amount) > ?', [$subMinSet]);
                 })
                 ->count();
-    
-            // sub_nowカラムを更新、上限を5に設定
-            $user->sub_now = min($nums*100, 500);
-            $user->save();
-        }
+        return $num;
     }
-    
 
+
+    /**
+     * 指定されたメンバーコードのユーザー情報と、そのユーザーの預けの詳細情報を取得する
+     *
+     * @param string $member_code
+     * @return array 以下のキーを持つ連想配列を返す：
+     *               - 'user': ユーザー情報 (member_code, name, depo_status) を含むオブジェクト
+     *               - 'details': 預けの詳細情報を格納したコレクション。各要素は DepoRealtime モデルのインスタンスで、
+     *                            product リレーション（商品情報）を含む。
+     *
+     * @throws \Exception データベース操作中にエラーが発生した場合
+     */
     public function get_depo_detail($member_code){
         $user = User::where('member_code', $member_code)
             ->select('member_code', 'name', 'depo_status')
@@ -91,11 +221,21 @@ class FunctionsController extends Controller
         ];
     }
 
+    /**
+     * 指定されたメンバーコードのユーザー情報と、指定された年数分の年間売上詳細を取得する
+     *
+     * @param string $member_code
+     * @param int $years 取得する年数（例：3 を指定すると、過去3年分のデータを取得）
+     * @return array 以下のキーを持つ連想配列を返す：
+     *               - 'user': ユーザー情報 (name, member_code, sales, depo_status) を含むオブジェクト
+     *               - 'years': 取得対象となった年（西暦）の配列
+     *               - 'yearlySales': 年ごと、月ごとの売上数量を格納した2次元配列
+     *               - 'totals': 年ごとの売上数量の合計を格納した配列
+     */
     public function get_sales_detail($member_code, $years){
         $user = User::where('member_code', $member_code)
             ->select('name', 'member_code', 'sales', 'depo_status')
             ->first();
-
 
         $currentYear = Carbon::now()->year;
         $currentMonth = Carbon::now()->month;

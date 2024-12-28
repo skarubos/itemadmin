@@ -24,12 +24,14 @@ Route::middleware('auth')->group(function () {
     Route::middleware('checkPermission:1')->group(function () {
         Route::get('/depo', [HomeController::class, 'depo_home'])->name('depo');
         Route::get('/sales', [HomeController::class, 'sales_home'])->name('sales');
-        Route::get('/refresh_sales', [PostingController::class, 'refresh_sales'])->name('refresh_sales');
+        Route::post('/refresh_member', [HomeController::class, 'refresh_member'])->name('refresh_member');
+        Route::get('/refresh_all', [HomeController::class, 'refresh_all'])->name('refresh_all');
         Route::get('/upload', [HomeController::class, 'upload'])->name('upload');
         Route::post('/upload_check', [PostingController::class, 'upload_check'])->name('upload_check');
         Route::post('/save', [PostingController::class, 'save'])->name('save');
         Route::match(['get', 'post'], '/admin', [HomeController::class, 'admin'])->name('admin');
         Route::post('/delete', [PostingController::class, 'delete'])->name('delete');
+        Route::get('/reset_all', [HomeController::class, 'reset_all'])->name('reset_all');
         Route::get('/test', [HomeController::class, 'test'])->name('test');
         Route::post('/show_dashboard', [HomeController::class, 'show_dashboard'])->name('show_dashboard');
     });

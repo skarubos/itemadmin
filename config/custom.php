@@ -3,7 +3,7 @@
 return [
 
     // 個人実績ページで表示する年数
-    'sales_howManyYears' => 1,
+    'sales_howManyYears' => 2,
 
     // 【実績】
     // 実績の対象となる取引タイプ

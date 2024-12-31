@@ -21,6 +21,36 @@ class PostingController extends Controller
     {
         $this->functionsController = $functionsController;
     }
+
+    public function show_edit_trade(Request $request)
+    {
+        $tradeId = $request->input('edit_id');
+        $trade = Trading::
+            with(['tradeType' => function($query) {
+                $query->select('trade_type', 'name');
+            }])
+            ->with(['user' => function($query) {
+                $query->select('member_code', 'name');
+            }])
+            ->where('id', $tradeId)
+            ->select('id', 'check_no', 'member_code', 'date', 'trade_type', 'amount')
+            ->first();
+        
+
+        $details = $details = TradeDetail::with('product')
+            ->where('trade_id', $tradeId)
+            ->get();
+
+        // ドロップダウンリスト表示に必要なデータを取得
+        $users = User::where('status', 1)
+            ->select('id', 'name', 'member_code')
+            ->orderBy('priority', 'ASC')
+            ->get();
+        $trade_types = TradeType::select('trade_type', 'name', 'caption')
+            ->get();
+
+        return view('trade-edit', compact('trade', 'details', 'users', 'trade_types'));
+    }
     
     public function upload_check(Request $request)
     {
@@ -120,109 +150,103 @@ class PostingController extends Controller
         return view('upload-check', compact('summarys', 'details', 'users', 'trade_types', 'type'));
     }
 
-    public function save(Request $request)
+    public function save_trade(Request $request)
     {
         // 伝票NoはNullable
-        $request->validate([
-            'no' => 'nullable|integer',
-            'name' => 'required|integer',
+        $validatedData = $request->validate([
+            'trade_id' => 'nullable|integer',
+            'check_no' => 'nullable|integer',
+            'member_code' => 'required|integer',
             'date' => 'required|date',
-            'type' => 'required|integer',
+            'trade_type' => 'required|integer',
             'amount' => 'required|integer',
             'details' => 'required|array',
             'details.*.product_id' => 'required|integer',
             'details.*.amount' => 'required|integer',
         ]);
+        // 取引IDを取得（新規の場合はNULL）
+        $tradeId = $validatedData['trade_id'] ?? null;
+        // 伝票番号があれば取得
+        $checkNo = $validatedData['check_no'] ?? null;
+        $memberCode = $validatedData['member_code'];
+        $tradeType = $validatedData['trade_type'];
+        $amount = $validatedData['amount'];
+        $details = $validatedData['details'];
 
-        // 重複チェック
-        if (!empty($request->input('no'))) {
-            $checkNo = $request->input('no');
+        // 伝票番号で重複チェック
+        if (is_null($tradeId) && !is_null($checkNo)) {
             $existingTrading = Trading::where('check_no', $checkNo)->first();
             if ($existingTrading) {
-                return back()->withErrors(['no' => '指定された「伝票No.」は既に登録されています。']);
+                return back()->withErrors(['check_no' => '指定された「伝票No.」は既に登録されています。']);
             }
-        } else {
-            $checkNo = null;
+        }
+
+        if ($tradeId) {
+            $oldTrading = Trading::find($tradeId);
+            $diff = $amount - $oldTrading->amount;
+            $oldDetails = TradeDetail::where('trade_id', $tradeId)->get();
         }
 
         // トランザクション開始
         DB::beginTransaction();
 
         try {
-            $tradeType = $request->input('type');
-            $memberCode = $request->input('name');
-            $amount = $request->input('amount');
-            $date = $request->input('date');
+            // 取引を追加or更新
+            $trading = $tradeId ? $oldTrading : new Trading();
+            if ($trading) {
+                $trading->fill($validatedData);
+                $trading->save();
 
-            // 新しい取引レコードを追加
-            $trading = new Trading();
-            $trading->check_no = $checkNo;
-            $trading->member_code = $memberCode;
-            $trading->date = $date;
-            $trading->trade_type = $tradeType;
-            $trading->amount = $amount;
-            $trading->save();
+                // 取引詳細を追加or更新
+                if ($tradeId) {
+                    // 既にある取引詳細を全削除
+                    TradeDetail::where('trade_id', $tradeId)->delete();
+                }
+                foreach ($details as $detail) {
+                    $tradeDetail = new TradeDetail();
+                    $tradeDetail->trade_id = $trading->id;
+                    $tradeDetail->product_id = $detail['product_id'];
+                    $tradeDetail->amount = $detail['amount'];
+                    $tradeDetail->save();
+                }
+            } else {
+                throw new \Exception("保存先($trading)を取得できませんでした");
+            }
 
             // 注文の時の処理
             if (in_array($tradeType, config('custom.sales_tradeTypes'))) {
-                $user = User::where('member_code', $memberCode)->first();
-                $user->latest_trade = $trading->id;
-                $user->sales += $amount;
-                $user->save();
-            }
-
-            // 預け入れの時の処理
-            if (in_array($tradeType, config('custom.depo_tradeTypesIn'))) {
-                $user = User::where('member_code', $memberCode)->first();
-                $user->depo_status += $amount;
-                $user->save();
-                // DepoRealtimeの更新
-                foreach ($request->input('details') as $detail) {
-                    $depoRealtime = DepoRealtime::firstOrNew([
-                        'member_code' => $memberCode,
-                        'product_id' => $detail['product_id']
-                    ]);
-                    $depoRealtime->amount += $detail['amount'];
-                    $depoRealtime->save();
+                // 最新注文&年間実績&資格手当を更新
+                $this->functionsController->refresh($memberCode);
+                if ($memberCode != $oldTrading->mamber_code) {
+                    $this->functionsController->refresh($oldTrading->mamber_code);
                 }
             }
 
-            // 預け出しの時の処理
-            if (in_array($tradeType, config('custom.depo_tradeTypesOut'))) {
-                $user = User::where('member_code', $memberCode)->first();
-                $user->depo_status -= $amount;
-                $user->save();
-                // DepoRealtimeの更新
-                foreach ($request->input('details') as $detail) {
-                    $depoRealtime = DepoRealtime::firstOrNew([
-                        'member_code' => $memberCode,
-                        'product_id' => $detail['product_id']
-                    ]);
-                    $depoRealtime->amount -= $detail['amount'];
-                    $depoRealtime->save();
-                }
+            // 預入れor預出しの時の処理
+            if (in_array($tradeType, config('custom.depo_tradeTypes'))) {
+                // 現在合計預けセット数＆DepoRealtimeテーブルを更新
+                $this->functionsController->saveDepoForMember($memberCode, $tradeType, $amount, $details, 1);
             }
 
-            // 取引詳細を追加
-            foreach ($request->input('details') as $detail) {
-                $tradeDetail = new TradeDetail();
-                $tradeDetail->trade_id = $trading->id;
-                $tradeDetail->product_id = $detail['product_id'];
-                $tradeDetail->amount = $detail['amount'];
-                $tradeDetail->save();
-            }
-
-            // トランザクションコミット
             DB::commit();
 
             // データ保存成功時
-            return redirect()->route('upload')->with('success', '取引データが正常に保存されました。');
+            if ($tradeId) {
+                return redirect()->route('admin')->with('success', '編集した取引データが正常に保存されました。');
+            } else {
+                return redirect()->route('upload')->with('success', '新規取引データが正常に保存されました。');
+            }
 
         } catch (\Exception $e) {
             // トランザクションロールバック
             DB::rollBack();
-            \Log::error('Data update(add) failed: ' . $e->getMessage());
-            return redirect()->route('upload')->withErrors(['error' => '取引データの保存中にエラーが発生しました:  ' . $e->getMessage()]);
+            if ($tradeId) {
+                \Log::error('編集した取引の保存に失敗: ' . $e->getMessage());
+            return redirect()->route('admin')->withErrors(['error' => '編集した取引データの保存中にエラーが発生しました:  ' . $e->getMessage()]);
+            } else {
+                \Log::error('新規取引の保存に失敗: ' . $e->getMessage());
+            return redirect()->route('upload')->withErrors(['error' => '新規取引データの保存中にエラーが発生しました:  ' . $e->getMessage()]);
+            }
         }
     }
 
@@ -241,61 +265,30 @@ class PostingController extends Controller
             $tradeType = $trading->trade_type;
             $memberCode = $trading->member_code;
             $amount = $trading->amount;
-            $date = $trading->date;
             $details = TradeDetail::where('trade_id', $tradeId)->get();
         }
 
         // トランザクション開始
         DB::beginTransaction();
         try {
-            // trade_typeが注文の時の処理
-            if (in_array($tradeType, config('custom.sales_tradeTypes'))) {
-                $user = User::where('member_code', $memberCode)->first();
-                // 最新注文の訂正
-                $latest =  $this->functionsController->latestTrade($memberCode);
-                $user->latest_trade = $latest ? $latest->id : null;
-                // 年間実績の訂正
-                $user->sales -= $amount;
-                $user->save();
-            }
-
-            // 預け入れの時の処理
-            if (in_array($tradeType, config('custom.depo_tradeTypesIn'))) {
-                $user = User::where('member_code', $memberCode)->first();
-                $user->depo_status -= $amount;
-                $user->save();
-                // DepoRealtimeの更新
-                foreach ($details as $detail) {
-                    $depoRealtime = DepoRealtime::firstOrNew([
-                        'member_code' => $memberCode,
-                        'product_id' => $detail['product_id']
-                    ]);
-                    $depoRealtime->amount -= $detail['amount'];
-                    $depoRealtime->save();
-                }
-            }
-
-            // 預け出しの時の処理
-            if (in_array($tradeType, config('custom.depo_tradeTypesOut'))) {
-                $user = User::where('member_code', $memberCode)->first();
-                $user->depo_status += $amount;
-                $user->save();
-                // DepoRealtimeの更新
-                foreach ($details as $detail) {
-                    $depoRealtime = DepoRealtime::firstOrNew([
-                        'member_code' => $memberCode,
-                        'product_id' => $detail['product_id']
-                    ]);
-                    $depoRealtime->amount += $detail['amount'];
-                    $depoRealtime->save();
-                }
-            }
-
             // trade_detailsの該当カラムを削除
             TradeDetail::where('trade_id', $tradeId)->delete();
 
             // tradingsの該当カラムを削除
             $trading->delete();
+
+            // 注文の時の処理
+            if (in_array($tradeType, config('custom.sales_tradeTypes'))) {
+                // 最新注文&年間実績&資格手当を更新
+                $this->functionsController->refresh($memberCode);
+            }
+
+            // 預入れor預出しの時の処理
+            if (in_array($tradeType, config('custom.depo_tradeTypes'))) {
+                // 現在合計預けセット数＆DepoRealtimeテーブルを更新
+                $this->functionsController->saveDepoForMember($memberCode, $tradeType, $amount, $details, -1);
+            }
+
 
             // トランザクションコミット
             DB::commit();

@@ -18,14 +18,14 @@ use DOMXPath;
 class FunctionsController extends Controller
 {
     /**
-     * 最新注文&年間実績&資格手当を更新
+     * 年間実績&最新注文&資格手当を更新
      *（特定のユーザーのみ OR 全ユーザー　両対応）
      *
      * @param $codeOrUsers 特定のユーザーのmember_code OR 全ユーザーのコレクション
      */
     public function refresh($codeOrUsers) {
         if (is_numeric($codeOrUsers)) {
-            // 引数が単体（$member_code）の場合、単一ユーザーの処理を実行
+            // 引数が単体（$memberCode）の場合、単一ユーザーの処理を実行
             $user = User::where('member_code', $codeOrUsers)->first();
             // 年間実績
             $params = $this->getSalesParam();
@@ -100,6 +100,44 @@ class FunctionsController extends Controller
         }
     }
 
+    /**
+     * 任意のユーザーの預け記録を更新
+     * 現在合計預けセット数＆DepoRealtimeテーブルを更新
+     *
+     * @param string $memberCode
+     * @param int $tradeType 
+     * @param int $amount 取引合計セット数（更新の場合は差分セット数　【例】旧40,新20：-20）
+     * @param array $details 取引詳細
+     * @param int $add (1)新規・更新、(-1)削除
+     */
+    public function saveDepoForMember($memberCode, $tradeType, $amount, $details, $add) {
+        // if (in_array($tradeType, config('custom.depo_tradeTypesIn'))) {
+        //     $sign = 1;
+        // } elseif (in_array($tradeType, config('custom.depo_tradeTypesOut'))) {
+        //     $sign = -1;
+        // }
+
+        // 預入れor預出しの判定
+        // $tradeTypeの値をconfig/custom.phpのdepo_tradeTypesと照らし合わせて、$signを正負とする
+        $depoTradeTypesIn = array_fill_keys(config('custom.depo_tradeTypesIn'), 1 * $add);
+        $depoTradeTypesOut = array_fill_keys(config('custom.depo_tradeTypesOut'), -1 * $add);
+        $tradeTypes = array_merge($depoTradeTypesIn, $depoTradeTypesOut);
+        $sign = $tradeTypes[$tradeType] ?? throw new \Exception("取引タイプが不正です。（預入れor預出し）");
+
+        $user = User::where('member_code', $memberCode)->first();
+        $user->depo_status += $amount * $sign;
+        $user->save();
+        // DepoRealtimeの更新
+        foreach ($details as $detail) {
+            $depoRealtime = DepoRealtime::firstOrNew([
+                'member_code' => $memberCode,
+                'product_id' => $detail['product_id']
+            ]);
+            $depoRealtime->amount += $detail['amount'] * $sign;
+            $depoRealtime->save();
+        }
+    }
+
     private function getSalesParam() {
         // 今年の最初の日付を取得
         $startOfYear = Carbon::now()->startOfYear();
@@ -138,13 +176,13 @@ class FunctionsController extends Controller
     /**
      * 任意のユーザーの合計実績を取得
      *
-     * @param string $member_code
+     * @param string $memberCode
      * @param mixed $startDate 集計開始日
      * @param array $tradeTypes 実績カウントする取引タイプの配列
      * @return int 取引数量の合計
      */
-    private function getSalesForMember($member_code, $startDate, $tradeTypes) {
-        $sales = Trading::where('member_code', $member_code)
+    private function getSalesForMember($memberCode, $startDate, $tradeTypes) {
+        $sales = Trading::where('member_code', $memberCode)
             ->where('date', '>=', $startDate)
             ->whereIn('trade_type', $tradeTypes)
             ->sum('amount');
@@ -154,13 +192,13 @@ class FunctionsController extends Controller
     /**
      * 任意のユーザーの最新の注文を検索
      *
-     * @param string $member_code
+     * @param string $memberCode
      * @param array $tradeTypes 最新の注文にカウントする取引タイプの配列（必ず移動20を除くこと！）
      * @param int $idouMinSet 最新注文の対象となる最小移動合計セット数
      * @return int 取引ID
      */
-    private function getLatestForMember($member_code, $tradeTypes, $idouMinSet) {
-        $latest = Trading::where('member_code', $member_code)
+    private function getLatestForMember($memberCode, $tradeTypes, $idouMinSet) {
+        $latest = Trading::where('member_code', $memberCode)
             ->where(function($query) use ($tradeTypes, $idouMinSet) {
                 $query->whereIn('trade_type', $tradeTypes)
                     ->orWhere(function($query) use ($idouMinSet) {
@@ -183,7 +221,7 @@ class FunctionsController extends Controller
      * @param int $subMinSet 資格手当対象となる最小合計セット数
      * @return int 資格手当対象となる傘下営業所の人数
      */
-    private function getSubForMember($subLeaderValue, $startDate, $tradeTypes, $subMinSet) {
+    public function getSubForMember($subLeaderValue, $startDate, $tradeTypes, $subMinSet) {
         $num = User::where('sub_number', $subLeaderValue)
                 ->whereHas('tradings', function ($query) use ($startDate, $tradeTypes, $subMinSet) {
                     $query->where('date', '>=', $startDate)
@@ -198,7 +236,7 @@ class FunctionsController extends Controller
     /**
      * 指定されたメンバーコードのユーザー情報と、そのユーザーの預けの詳細情報を取得する
      *
-     * @param string $member_code
+     * @param string $memberCode
      * @return array 以下のキーを持つ連想配列を返す：
      *               - 'user': ユーザー情報 (member_code, name, depo_status) を含むオブジェクト
      *               - 'details': 預けの詳細情報を格納したコレクション。各要素は DepoRealtime モデルのインスタンスで、
@@ -206,12 +244,12 @@ class FunctionsController extends Controller
      *
      * @throws \Exception データベース操作中にエラーが発生した場合
      */
-    public function get_depo_detail($member_code){
-        $user = User::where('member_code', $member_code)
+    public function get_depo_detail($memberCode){
+        $user = User::where('member_code', $memberCode)
             ->select('member_code', 'name', 'depo_status')
             ->first();
         $details = DepoRealtime::with('product')
-            ->where('member_code', $member_code)
+            ->where('member_code', $memberCode)
             ->where('amount', '!=', 0)
             ->orderBy('product_id', 'ASC')
             ->get();
@@ -224,7 +262,7 @@ class FunctionsController extends Controller
     /**
      * 指定されたメンバーコードのユーザー情報と、指定された年数分の年間売上詳細を取得する
      *
-     * @param string $member_code
+     * @param string $memberCode
      * @param int $years 取得する年数（例：3 を指定すると、過去3年分のデータを取得）
      * @return array 以下のキーを持つ連想配列を返す：
      *               - 'user': ユーザー情報 (name, member_code, sales, depo_status) を含むオブジェクト
@@ -232,8 +270,8 @@ class FunctionsController extends Controller
      *               - 'yearlySales': 年ごと、月ごとの売上数量を格納した2次元配列
      *               - 'totals': 年ごとの売上数量の合計を格納した配列
      */
-    public function get_sales_detail($member_code, $years){
-        $user = User::where('member_code', $member_code)
+    public function get_sales_detail($memberCode, $years){
+        $user = User::where('member_code', $memberCode)
             ->select('name', 'member_code', 'sales', 'depo_status')
             ->first();
 
@@ -257,7 +295,7 @@ class FunctionsController extends Controller
                 if (!($year === $currentYear && $month > $currentMonth)) {
                     $startOfMonth = Carbon::createFromDate($year, $month, 1)->startOfMonth();
                     $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth();
-                    $monthlySum = Trading::where('member_code', $member_code)
+                    $monthlySum = Trading::where('member_code', $memberCode)
                         ->whereBetween('date', [$startOfMonth, $endOfMonth])
                         ->whereIn('trade_type', config('custom.sales_tradeTypes'))
                         ->sum('amount');

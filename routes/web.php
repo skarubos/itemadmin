@@ -28,8 +28,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/refresh_all', [HomeController::class, 'refresh_all'])->name('refresh_all');
         Route::get('/upload', [HomeController::class, 'upload'])->name('upload');
         Route::post('/upload_check', [PostingController::class, 'upload_check'])->name('upload_check');
-        Route::post('/save', [PostingController::class, 'save'])->name('save');
+        Route::post('/trade/save', [PostingController::class, 'save_trade'])->name('trade.save');
         Route::match(['get', 'post'], '/admin', [HomeController::class, 'admin'])->name('admin');
+        Route::get('/trade/edit', [PostingController::class, 'show_edit_trade'])->name('trade.edit');
         Route::post('/delete', [PostingController::class, 'delete'])->name('delete');
         Route::get('/reset_all', [HomeController::class, 'reset_all'])->name('reset_all');
         Route::get('/test', [HomeController::class, 'test'])->name('test');

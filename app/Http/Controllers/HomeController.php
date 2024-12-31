@@ -81,22 +81,32 @@ class HomeController extends Controller
         return view('sales-detail', compact('data'));
     }
 
-    public function sales_list($member_code){
+    public function sales_list($member_code)
+    {
         $user = User::where('member_code', $member_code)
             ->select('member_code', 'name')
             ->first();
+
+        // 開始年と終了年を計算
+        $years = config('custom.sales_howManyYears');
+        $startDate = Carbon::now()->subYears($years - 1)->startOfYear();
+        $endDate = Carbon::now()->endOfYear();
     
-        $currentDate = Carbon::now();
         $tradings = Trading::with(['tradeType' => function($query) {
                 $query->select('trade_type', 'name');
             }])
             ->where('member_code', $member_code)
-            ->whereYear('date', $currentDate->year)
+            ->whereBetween('date', [$startDate, $endDate])
             ->select('id', 'date', 'trade_type', 'amount')
             ->orderBy('date', 'DESC')
             ->get();
-
-        return view('sales-list', compact('user', 'tradings', 'currentDate'));
+    
+        // 年ごとに取引記録をグループ化
+        $groupedTradings = $tradings->groupBy(function($date) {
+            return Carbon::parse($date->date)->format('Y');
+        });
+    
+        return view('sales-list', compact('user', 'groupedTradings'));
     }
 
     public function sales_trade($member_code, $trade_id) {

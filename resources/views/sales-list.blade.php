@@ -6,8 +6,9 @@
             <p class="text-2xl py-1">お取引一覧</p>
                 （{{ $user->name }}）
         </div>
+        @foreach ($groupedTradings as $year => $tradings)
         <div class="text-center font-bold p-2">
-            {{ $currentDate->year }}年
+            {{ $year }}年
         </div>
         @foreach($tradings as $trading)
         <div class="mb-2">
@@ -26,6 +27,7 @@
             </span>
             </a>
             </div>
+        @endforeach
         @endforeach
     </div>
     </div>

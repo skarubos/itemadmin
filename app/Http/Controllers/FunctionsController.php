@@ -111,22 +111,17 @@ class FunctionsController extends Controller
      * @param int $add (1)新規・更新、(-1)削除
      */
     public function saveDepoForMember($memberCode, $tradeType, $amount, $details, $add) {
-        // if (in_array($tradeType, config('custom.depo_tradeTypesIn'))) {
-        //     $sign = 1;
-        // } elseif (in_array($tradeType, config('custom.depo_tradeTypesOut'))) {
-        //     $sign = -1;
-        // }
-
         // 預入れor預出しの判定
         // $tradeTypeの値をconfig/custom.phpのdepo_tradeTypesと照らし合わせて、$signを正負とする
         $depoTradeTypesIn = array_fill_keys(config('custom.depo_tradeTypesIn'), 1 * $add);
         $depoTradeTypesOut = array_fill_keys(config('custom.depo_tradeTypesOut'), -1 * $add);
-        $tradeTypes = array_merge($depoTradeTypesIn, $depoTradeTypesOut);
+        $tradeTypes = $depoTradeTypesIn + $depoTradeTypesOut;
         $sign = $tradeTypes[$tradeType] ?? throw new \Exception("取引タイプが不正です。（預入れor預出し）");
 
         $user = User::where('member_code', $memberCode)->first();
         $user->depo_status += $amount * $sign;
         $user->save();
+
         // DepoRealtimeの更新
         foreach ($details as $detail) {
             $depoRealtime = DepoRealtime::firstOrNew([

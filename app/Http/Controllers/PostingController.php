@@ -78,6 +78,7 @@ class PostingController extends Controller
             ->where('trade_id', $tradeId)
             ->get();
         // 新規登録時と形式を合わせるためDetailインスタンスに入れ替え
+        $details = [];
         foreach ($tableDetails as $tableDetail) {
             $details[] = new Detail($tableDetail->product_id, $tableDetail->product->name, $tableDetail->amount);
         }
@@ -96,17 +97,35 @@ class PostingController extends Controller
     public function upload_check(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'file' => 'required|mimes:xlsx,xls',
+            'file' => 'nullable|mimes:xlsx,xls',
         ]);
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
         };
 
+        // 取引データを格納するインスタンス
+        $trade = new Trade(null, null, null, null, null, null);
+        // 取引詳細を格納する配列
+        $details = [];
+
+        // ファイルが存在しない場合の処理
+        if (!$request->hasFile('file')) {
+            // 移動を想定
+            $trade->trade_type = 20;
+            // ドロップダウンリスト表示に必要なデータを取得
+            $users = User::where('status', 1)
+                ->select('id', 'name', 'member_code')
+                ->orderBy('priority', 'ASC')
+                ->get();
+            $trade_types = TradeType::select('trade_type', 'name', 'caption')
+                ->get();
+
+            return view('trade-edit', compact('trade', 'details', 'users', 'trade_types'));
+        }
+
         $file = $request->file('file')->getRealPath();
         $spreadsheet = IOFactory::load($file);
         $sheetData = $spreadsheet->getActiveSheet()->toArray();
-
-        $trade = new Trade(null, null, null, null, null, null);
 
         // 詳細行（商品別セット数の一覧が記載されている行）の開始行と終了行
         $startRow = null;
@@ -148,7 +167,6 @@ class PostingController extends Controller
         }
 
         // 商品別セット数の一覧を$details[]に取得
-        $details = [];
         if ($startRow !== null && $endRow !== null) {
             for ($i = $startRow; $i < $endRow; $i++) {
                 // 商品名から商品IDを取得
@@ -179,7 +197,7 @@ class PostingController extends Controller
                 $trade->trade_type = $trade->member_code === 3851 ? 111 : 11;
                 break;
             case 3:
-                $trade->trade_type  = $trade->member_code === 3851 ? 121 : 21;
+                $trade->trade_type = $trade->member_code === 3851 ? 121 : 21;
                 break;
         }
 
@@ -195,9 +213,9 @@ class PostingController extends Controller
             'trade_type' => 'required|integer',
             'amount' => 'required|integer',
             'change_detail' => 'nullable|integer',
-            'details' => 'required|array',
-            'details.*.product_id' => 'required|integer',
-            'details.*.amount' => 'required|integer',
+            'details' => 'nullable|array',
+            'details.*.product_id' => 'nullable|integer',
+            'details.*.amount' => 'nullable|integer',
         ]);
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
@@ -205,15 +223,14 @@ class PostingController extends Controller
 
         // バリデーション済みのデータを取得
         $validatedData = $validator->validated();
-        // 取引IDを取得（新規の場合はNULL）
+        // 編集対象の取引IDを取得（新規の場合はNULL）
         $tradeId = $validatedData['trade_id'] ?? null;
         $memberCode = $validatedData['member_code'];
         $tradeType = $validatedData['trade_type'];
         $amount = $validatedData['amount'];
-        $details = $validatedData['details'];
-
-        // チェックボックスのデフォルト値を設定(0:変更なし、1:変更ありor新規登録)
-        $change_detail = $request->input('change_detail', 0);
+        $details = $validatedData['details'] ?? null;
+        // 取引詳細(1:変更あり(新規登録を含む))
+        $change_detail = $validatedData['change_detail'] ?? null;
 
         // 編集の時は編集前データを保持
         if ($tradeId) {

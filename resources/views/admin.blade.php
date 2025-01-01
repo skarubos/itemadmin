@@ -12,7 +12,6 @@
                     </a>
                 </div>
 
-                
                 <div class="m-4">
                     <!-- 営業所ページへのリンク -->
                     <form action="/show_dashboard" method="POST" enctype="multipart/form-data" class="mb-5">
@@ -27,21 +26,6 @@
                         </select>
                         <x-primary-button class="px-5 my-2 items-center justify-center">
                             show Dashboard
-                        </x-primary-button>
-                    </form>
-
-                    <form action="/trade/edit" method="GET" enctype="multipart/form-data" class="mb-5">
-                        @csrf
-                        <label for="edit_id" class="text-sm font-medium">編集する取引を選択</label>
-                        <select name="edit_id" id="edit_id" class="w-2/6 min-w-56 dark:bg-gray-900 mt-1 mr-5 py-2 px-12 shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
-                            @foreach($trades as $trade)
-                                <option value="{{ $trade['id'] }}" class="">
-                                    {{ $trade['id'] . ' （' . $trade['date'].  '） ' . $trade->user->name . ' : ' . $trade['amount'] . 'セット' }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <x-primary-button class="px-5 my-2 items-center justify-center">
-                            edit
                         </x-primary-button>
                     </form>
 
@@ -61,14 +45,30 @@
                         </x-primary-button>
                     </form>
 
-                    <!-- 削除 -->
-                    <form action="/delete" method="POST" enctype="multipart/form-data">
+                    <!-- 取引を編集 -->
+                    <form action="/trade/edit" method="GET" enctype="multipart/form-data" class="mb-5">
                         @csrf
-                        <label for="trade_id" class="text-sm font-medium">削除する取引を選択</label>
-                        <select name="trade_id" id="trade_id" class="w-2/6 min-w-56 dark:bg-gray-900 mt-1 mr-5 py-2 px-8 shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
+                        <label for="edit_id" class="text-sm font-medium">編集する取引を選択</label>
+                        <select name="edit_id" id="edit_id" class="w-2/6 min-w-56 dark:bg-gray-900 mt-1 mr-5 py-2 px-6 shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
                             @foreach($trades as $trade)
                                 <option value="{{ $trade['id'] }}" class="">
-                                    {{ $trade['id'] . ' （' . $trade['date'].  '） ' . $trade->user->name . ' : ' . $trade['amount'] . 'セット' }}
+                                    {{ $trade['id'] . ' （' . $trade['date'].  '） ' . $trade['trade_type'] . ' : ' . $trade->user->name . ' : ' . $trade['amount'] . 'セット' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <x-primary-button class="px-5 my-2 items-center justify-center">
+                            edit
+                        </x-primary-button>
+                    </form>
+
+                    <!-- 削除 -->
+                    <form action="/delete" method="POST" enctype="multipart/form-data" onsubmit="return confirmDelete()">
+                        @csrf
+                        <label for="trade_id" class="text-sm font-medium">削除する取引を選択</label>
+                        <select name="trade_id" id="trade_id" class="w-2/6 min-w-56 dark:bg-gray-900 mt-1 mr-5 py-2 px-6 shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
+                            @foreach($trades as $trade)
+                                <option value="{{ $trade['id'] }}" class="">
+                                {{ $trade['id'] . ' （' . $trade['date'].  '） ' . $trade['trade_type'] . ' : ' . $trade->user->name . ' : ' . $trade['amount'] . 'セット' }}
                                 </option>
                             @endforeach
                         </select>
@@ -89,4 +89,9 @@
             </div>
         </div>
     </div>
+    <script>
+        function confirmDelete() {
+            return confirm('この取引を本当に削除しますか？');
+        }
+    </script>
 </x-app-layout>

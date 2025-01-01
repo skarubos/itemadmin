@@ -52,6 +52,7 @@
                 <div class="w-1/2 px-8">
                 <!-- Details Textarea -->
                 <div class="mb-4">
+                @if($details)
                     <label for="details" class="mr-10">Details</label>
                     <input type={{ is_null($trade->id) ? "hidden" : "checkbox" }} name="change_detail" value="1">
                     @if(!is_null($trade->id))
@@ -64,6 +65,7 @@
                         <input type="number" name="details[{{ $index }}][amount]" value="{{ $detail->amount }}"  class="w-1/6 dark:bg-gray-900 mt-1 p-2 block shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
                     </div>
                     @endforeach
+                @endif
                 </div>
 
                 <x-primary-button class="float-right m-4 px-10">

@@ -6,7 +6,7 @@
             <div class="p-6">
                 {{ __("Upload Page") }}
             </div>
-            <form action="/upload_check" method="POST" enctype="multipart/form-data" class="px-7 pb-5 relative">
+            <form action="/trade/edit" method="POST" enctype="multipart/form-data" class="px-7 pb-5 relative">
                 @csrf
                 <div class="border border-dashed border-gray-500 dark:bg-gray-900/30 relative mb-5 rounded">
                     <input type="file"  name="file" required multiple onchange="updateFileName(this)" class="cursor-pointer relative block opacity-0 w-full h-full p-16 z-50">

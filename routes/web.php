@@ -24,17 +24,17 @@ Route::middleware('auth')->group(function () {
     Route::middleware('checkPermission:1')->group(function () {
         Route::get('/depo', [HomeController::class, 'depo_home'])->name('depo');
         Route::get('/sales', [HomeController::class, 'sales_home'])->name('sales');
+        Route::match(['get', 'post'], '/admin', [HomeController::class, 'admin'])->name('admin');
         Route::post('/refresh_member', [HomeController::class, 'refresh_member'])->name('refresh_member');
         Route::get('/refresh_all', [HomeController::class, 'refresh_all'])->name('refresh_all');
-        Route::get('/upload', [HomeController::class, 'upload'])->name('upload');
-        Route::post('/upload_check', [PostingController::class, 'upload_check'])->name('upload_check');
-        Route::post('/trade/save', [PostingController::class, 'save_trade'])->name('trade.save');
-        Route::match(['get', 'post'], '/admin', [HomeController::class, 'admin'])->name('admin');
-        Route::get('/trade/edit', [PostingController::class, 'show_edit_trade'])->name('trade.edit');
-        Route::post('/delete', [PostingController::class, 'delete'])->name('delete');
         Route::get('/reset_all', [HomeController::class, 'reset_all'])->name('reset_all');
-        Route::get('/test', [HomeController::class, 'test'])->name('test');
         Route::post('/show_dashboard', [HomeController::class, 'show_dashboard'])->name('show_dashboard');
+        Route::get('/upload', [HomeController::class, 'upload'])->name('upload');
+        Route::post('/trade/edit', [PostingController::class, 'upload_check'])->name('trade.edit');
+        Route::get('/trade/edit', [PostingController::class, 'show_edit_trade']);
+        Route::post('/trade/save', [PostingController::class, 'save_trade'])->name('trade.save');
+        Route::post('/delete', [PostingController::class, 'delete'])->name('delete');
+        Route::get('/test', [HomeController::class, 'test'])->name('test');
     });
 
     // permission=1なら誰のデータでも閲覧可能

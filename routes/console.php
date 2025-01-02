@@ -7,10 +7,6 @@ use Illuminate\Support\Facades\Schedule;
 use App\Http\Controllers\FunctionsController;
 use App\Models\User;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote')->hourly();
-
 Schedule::call(function () {
     $users = User::where('status', 1)->get();
     DB::beginTransaction();
@@ -39,7 +35,14 @@ Schedule::call(function () {
         RefreshLog::create(['status' => 'failure', 'error_message' => '資格手当更新(refresh_sub)失敗:' . $e->getMessage()]);
         \Log::error('自動更新(refresh_sub)に失敗: ' . $e->getMessage());
     }
-})->dailyAt('05:10')->name('refresh_sub');
+})->dailyAt('00:10')->name('refresh_sub');
+
+// レンタルサーバーのcron設定での記述
+// * * * * * cd /path/to/your/project && php artisan schedule:run >> /dev/null 2>&1
+
+// Artisan::command('inspire', function () {
+//     $this->comment(Inspiring::quote());
+// })->purpose('Display an inspiring quote')->hourly();
 
 // Artisan::command('refresh_sales', function () {
 //     DB::beginTransaction();

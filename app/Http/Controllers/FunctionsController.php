@@ -93,7 +93,7 @@ class FunctionsController extends Controller
             // 過去6ヶ月の実績を持つユーザーの数を取得
             $subLeaderValue = $user->sub_leader;
             $num = $this->getSubForMember($subLeaderValue, $params['startDate'], $params['tradeTypes'], $params['subMinSet']);
-    
+
             // sub_nowカラムを更新、上限を500に設定
             $user->sub_now = min($num*100, 500);
             $user->save();

@@ -17,11 +17,11 @@ use DOMXPath;
 
 class HomeController extends Controller
 {
-    // FunctionsControllerのメソッドを$this->functionsControllerで呼び出せるようにする
+    // FunctionsControllerのメソッドを$this->FunctionsControllerで呼び出せるようにする
     private $functionsController;
     public function __construct(FunctionsController $functionsController)
     {
-        $this->functionsController = $functionsController;
+        $this->FunctionsController = $functionsController;
     }
 
     public function dashboard(){
@@ -77,7 +77,7 @@ class HomeController extends Controller
 
     public function sales_detail($member_code){
         $years = config('custom.sales_howManyYears');
-        $data = $this->functionsController->get_sales_detail($member_code, $years);
+        $data = $this->FunctionsController->get_sales_detail($member_code, $years);
         return view('sales-detail', compact('data'));
     }
 
@@ -141,7 +141,7 @@ class HomeController extends Controller
     }
     
     public function depo_detail($member_code){
-        $data = $this->functionsController->get_depo_detail($member_code);
+        $data = $this->FunctionsController->get_depo_detail($member_code);
         return view('depo-detail', compact('data'));
     }
 
@@ -300,14 +300,16 @@ class HomeController extends Controller
             $display = null;
         }
 
-        return view('admin', compact('users', 'trades', 'display', 'details'));
+        $refreshLogs = $this->FunctionsController->getRefreshLog();
+
+        return view('admin', compact('users', 'trades', 'display', 'details', 'refreshLogs'));
     }
 
     public function refresh_member(Request $request) {
         $member_code = $request->input('member_code');
         DB::beginTransaction();
         try {
-            $this->functionsController->refresh($member_code);
+            $this->FunctionsController->refresh($member_code);
             DB::commit();
             return redirect()->route('sales')
                 ->with('success', $member_code . ':データの更新が正常に行われました。【最新注文&年間実績&資格手当】');
@@ -322,7 +324,7 @@ class HomeController extends Controller
         $users = User::where('status', 1)->get();
         DB::beginTransaction();
         try {
-            $this->functionsController->refresh($users);
+            $this->FunctionsController->refresh($users);
             DB::commit();
             return redirect()->route('sales')
                 ->with('success', 'データの更新が正常に行われました。【最新注文&年間実績&資格手当】');
@@ -431,7 +433,7 @@ dd($html);
         // $dataUrl = 'https://www.mikigroup.jp/jisseki02';
         $dataUrl = 'https://www.mikigroup.jp/month01';
         
-        $tables = $this->functionsController->get_tables_url($dataUrl);
+        $tables = $this->FunctionsController->get_tables_url($dataUrl);
 
         $firstTable = $tables->item(0);
         // tableの行を取得
@@ -461,7 +463,7 @@ dd($html);
         $details = [];
         foreach ($tradeList as $index => $trade) {
             $tradeUrl = "https://www.mikigroup.jp/" . $trade[0];
-            $tables = $this->functionsController->get_tables_url($tradeUrl);
+            $tables = $this->FunctionsController->get_tables_url($tradeUrl);
             $detail = [];
             for ($k = 0; $k < count($tables); $k++) {
                 if ($k < 1) continue;

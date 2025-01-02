@@ -3,12 +3,12 @@
 <div class="py-6">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="bg-white dark:bg-gray-800 font-medium text-gray-900 dark:text-gray-100 overflow-hidden p-6 shadow-sm sm:rounded-lg">
-            <form action="/trade/save" method="POST" enctype="multipart/form-data" class="flex">
+            <form action="/trade/save" method="POST" enctype="multipart/form-data" class="lg:flex">
                 @csrf
                 <!-- 取引ID（非表示） -->
                 <input type="hidden" name="trade_id" value="{{ $trade->id ?? '' }}">
 
-                <div class="w-1/2 px-8">
+                <div class="lg:w-1/2 px-8">
 
                 <!-- member_code Dropdown -->
                 <div class="mb-4">
@@ -49,7 +49,7 @@
                 </div>
                 </div>
 
-                <div class="w-1/2 px-8">
+                <div class="lg:w-1/2 px-8 pt-3">
                 <!-- Details Textarea -->
                 <div class="mb-4">
                 @if($details)
@@ -59,7 +59,7 @@
                         <label for="change_detail">変更あり</label>
                     @endif
                     @foreach($details as $index => $detail)
-                    <div class="flex px-4">
+                    <div class="flex lg:px-4">
                         <input type="hidden" name="details[{{ $index }}][product_id]" value="{{ $detail->product_id }}">
                         <input type="text" name="details[{{ $index }}][name]" value="{{ $detail->name }}" class="w-5/6 dark:bg-gray-900 mt-1 p-2 block shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
                         <input type="number" name="details[{{ $index }}][amount]" value="{{ $detail->amount }}"  class="w-1/6 dark:bg-gray-900 mt-1 p-2 block shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
@@ -68,7 +68,7 @@
                 @endif
                 </div>
 
-                <x-primary-button class="float-right m-4 px-10">
+                <x-primary-button class="float-right px-10 mt-5 lg:m-4">
                     Save
                 </x-primary-button>
                 </div>

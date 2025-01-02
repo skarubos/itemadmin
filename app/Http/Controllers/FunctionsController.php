@@ -11,6 +11,7 @@ use App\Models\DepoRealtime;
 use App\Models\Trading;
 use App\Models\TradeDetail;
 use App\Models\TradeType;
+use App\Models\RefreshLog;
 use Carbon\Carbon;
 use DOMDocument;
 use DOMXPath;
@@ -308,6 +309,23 @@ class FunctionsController extends Controller
             'totals' => $totals,
         ];
     }
+
+    public function getRefreshLog(){
+        $logs = [
+            'refresh_sub' => RefreshLog::where('method', 'refresh_sub')->orderBy('created_at', 'DESC')->first(),
+            'refresh' => RefreshLog::where('method', 'refresh')->orderBy('created_at', 'DESC')->first(),
+        ];
+    
+        foreach ($logs as $key => $log) {
+            if (!$log) {
+                $logs[$key] = "自動更新ログが存在しません。";
+            }
+        }
+    
+        return $logs;
+    }
+    
+    
 
     public function get_tables_url($url){
         $ch = curl_init();

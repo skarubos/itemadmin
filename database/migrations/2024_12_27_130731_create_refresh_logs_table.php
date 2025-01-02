@@ -12,10 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('refresh_logs', function (Blueprint $table) {
-            $table->id();
+            $table->increments('id');
+            $table->string('method');
+            $table->string('caption');
             $table->string('status');
             $table->text('error_message')->nullable();
-            $table->timestamp('updated_at')->useCurrent();
+            $table->timestamps();
         });
     }
 

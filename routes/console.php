@@ -23,7 +23,8 @@ Schedule::call(function () {
         RefreshLog::create(['method' => 'refresh_sub', 'caption' => '資格手当更新', 'status' => 'failure', 'error_message' => $error_message]);
         \Log::error('自動更新(refresh_sub)に失敗: ' . $e->getMessage());
     }
-})->dailyAt('00:09')->name('refresh_sub');
+})->name('refresh_sub');
+// ->dailyAt('00:09')
 
 Schedule::call(function () {
     $users = User::where('status', 1)->get();

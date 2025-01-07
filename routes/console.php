@@ -6,8 +6,25 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\FunctionsController;
+use App\Http\Controllers\ScrapingController;
 use App\Models\User;
 use App\Models\RefreshLog;
+
+Schedule::call(function () {
+    DB::beginTransaction();
+    try {
+        // サービスコンテナを使用してScrapingControllerを解決する
+        $controller = app(ScrapingController::class);
+        $howMany = $controller->scrape();
+        DB::commit();
+        RefreshLog::create(['method' => 'scrape', 'caption' => '新規取引の取得', 'status' => 'success', 'error_message' => $howMany]);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        $error_message = explode("\n", $e->getMessage())[0];
+        RefreshLog::create(['method' => 'scrape', 'caption' => '新規取引の取得', 'status' => 'failure', 'error_message' => $error_message]);
+        \Log::error('新規取引の取得(scrape)に失敗: ' . $e->getMessage());
+    }
+})->dailyAt('05:55')->name('scraping');
 
 Schedule::call(function () {
     $users = User::where('status', 1)->get();
@@ -23,8 +40,7 @@ Schedule::call(function () {
         RefreshLog::create(['method' => 'refresh_sub', 'caption' => '資格手当更新', 'status' => 'failure', 'error_message' => $error_message]);
         \Log::error('自動更新(refresh_sub)に失敗: ' . $e->getMessage());
     }
-})->name('refresh_sub');
-// ->dailyAt('00:09')
+})->dailyAt('00:09')->name('refresh_sub');
 
 Schedule::call(function () {
     $users = User::where('status', 1)->get();

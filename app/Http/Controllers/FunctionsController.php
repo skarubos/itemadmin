@@ -13,8 +13,7 @@ use App\Models\TradeDetail;
 use App\Models\TradeType;
 use App\Models\RefreshLog;
 use Carbon\Carbon;
-use DOMDocument;
-use DOMXPath;
+use Exception;
 
 class FunctionsController extends Controller
 {
@@ -117,7 +116,7 @@ class FunctionsController extends Controller
         $depoTradeTypesIn = array_fill_keys(config('custom.depo_tradeTypesIn'), 1 * $add);
         $depoTradeTypesOut = array_fill_keys(config('custom.depo_tradeTypesOut'), -1 * $add);
         $tradeTypes = $depoTradeTypesIn + $depoTradeTypesOut;
-        $sign = $tradeTypes[$tradeType] ?? throw new \Exception("取引タイプが不正です。（預入れor預出し）");
+        $sign = $tradeTypes[$tradeType] ?? throw new Exception("取引タイプが不正です。（預入れor預出し）");
 
         $user = User::where('member_code', $memberCode)->first();
         $user->depo_status += $amount * $sign;
@@ -238,7 +237,7 @@ class FunctionsController extends Controller
      *               - 'details': 預けの詳細情報を格納したコレクション。各要素は DepoRealtime モデルのインスタンスで、
      *                            product リレーション（商品情報）を含む。
      *
-     * @throws \Exception データベース操作中にエラーが発生した場合
+     * @throws Exception データベース操作中にエラーが発生した場合
      */
     public function get_depo_detail($memberCode){
         $user = User::where('member_code', $memberCode)
@@ -324,24 +323,143 @@ class FunctionsController extends Controller
     
         return $logs;
     }
-    
-    
 
-    public function get_tables_url($url){
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, storage_path('app/cookie.txt'));
-        $data = curl_exec($ch);
-        curl_close($ch);
+    public function getProcuctId($name) {
+        // nameからmember_codeを取得
+        $product = Product::where('name', $name)->first();
+        if ($product) {
+            return $product->id;
+        } else {
+            throw new Exception("未登録の商品名があります。");
+        }
+    }
 
-        // DOMパーサーを使用してデータを解析
-        $dom = new DOMDocument();
-        @$dom->loadHTML($data);
+    public function getMemberCode($name) {
+        if ($name == '店頭販売') {
+            return 3851;
+        }
 
-        // table要素を取得
-        $tables = $dom->getElementsByTagName('table');
-        return $tables;
+        $user = User::where('name', $name)->first();
+        if (!$user) {
+            throw new Exception("データベースに存在しない氏名です。");
+        }
+
+        return $user->member_code;
+    }
+
+    public function setTradeAttributes(&$row) {
+        if ($row['member_code'] == 3851) {
+            if ($row['sales']) {
+                $row['amount'] = $row['sales'];
+                $row['trade_type'] = 110;
+            } elseif ($row['in']) {
+                $row['amount'] = $row['in'];
+                $row['trade_type'] = 111;
+            } elseif ($row['out']) {
+                $row['amount'] = $row['out'];
+                $row['trade_type'] = 121;
+            }
+        } else {
+            if ($row['sales']) {
+                $row['amount'] = $row['sales'];
+                $row['trade_type'] = 10;
+            } elseif ($row['in']) {
+                $row['amount'] = $row['in'];
+                $row['trade_type'] = 11;
+            } elseif ($row['out']) {
+                $row['amount'] = $row['out'];
+                $row['trade_type'] = 21;
+            }
+        }
+    }
+
+    public function getJutyunoArr() {
+        // 現在の月と一致する取引のcheck_noカラムの値を取得
+        $arr = [];
+        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
+        $arr = Trading::whereBetween('date', [$startOfMonth, $endOfMonth])
+            ->pluck('check_no')
+            ->toArray();
+        return $arr;
+    }
+
+    public function getNo($string) {
+        $string = substr($string, strlen(config('secure.url_forRemove')));
+        $string = substr($string, 0, -15);
+        return $string;
+    }
+
+    /**
+     * 取引の新規登録or更新を行う
+     *
+     * @param string $tradeId NULLなら新規登録
+     * @param array $tradeData ['member_code', 'trade_type', 'amount']を持つ
+     * @param array $details 取引詳細(各要素に['product_id', 'amount']を持つ)
+     * @param int $change_detail 新規登録か$detailsに変更がある場合に「１」を指定
+     */
+    public function update_trade($tradeId, $tradeData, $details, $change_detail) {
+        if ($tradeId) {
+            // 編集の時は編集前データを保持
+            $oldTrading = Trading::find($tradeId);
+            $oldDetails = TradeDetail::where('trade_id', $tradeId)->get();
+            // 編集前データは保持したまま変更用にコピー
+            $trading = clone $oldTrading;
+        } else {
+            // 新規登録の場合
+            $trading = new Trading();
+        }
+        if (!$trading) {
+            throw new Exception("保存先($trading)を取得できませんでした");
+        }
+        
+        // 取引を新規登録or編集
+        $trading->fill($tradeData);
+        $trading->save();
+
+        // 変更ありの時、取引詳細を新規登録or編集
+        if ($change_detail == 1) {
+            $totalAmount = 0;
+            if ($tradeId) {
+                // 既にある取引詳細を全削除
+                TradeDetail::where('trade_id', $tradeId)->delete();
+            }
+            foreach ($details as $detail) {
+                $totalAmount += $detail['amount'];
+                $tradeDetail = new TradeDetail();
+                $tradeDetail->trade_id = $trading->id;
+                $tradeDetail->product_id = $detail['product_id'];
+                $tradeDetail->amount = $detail['amount'];
+                $tradeDetail->save();
+            }
+
+            // 合計セット数一致確認
+            if ($totalAmount != $tradeData['amount']) {
+                throw new Exception("「取引セット数」と「取引詳細の合計セット数」が一致しません");
+            }
+        }
+
+        // 編集前の取引が存在する場合
+        if ($tradeId) {
+            // 取引ユーザーが変更された場合は変更前のユーザーの最新注文&年間実績&資格手当を更新
+            if ($tradeData['member_code'] != $oldTrading->member_code) {
+                $this->refresh($oldTrading->member_code);
+            }
+            // 預入れor預出しの時の処理
+            if (in_array($oldTrading->trade_type, config('custom.depo_tradeTypes'))) {
+                // 現在合計預けセット数＆DepoRealtimeテーブルを更新（削除）
+                $this->saveDepoForMember($oldTrading->member_code, $oldTrading->trade_type, $oldTrading->amount, $oldDetails, -1);
+            }
+        }
+
+        // 最新注文&年間実績&資格手当を更新
+        $this->refresh($tradeData['member_code']);
+
+        // 預入れor預出しの時の処理
+        if (in_array($tradeData['trade_type'], config('custom.depo_tradeTypes'))) {
+            // 現在合計預けセット数＆DepoRealtimeテーブルを更新（追加）
+            $this->saveDepoForMember($tradeData['member_code'], $tradeData['trade_type'], $tradeData['amount'], $details, 1);
+        }
     }
 
 }

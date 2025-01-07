@@ -3,8 +3,9 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FunctionsController;
-use App\Http\Controllers\PostingController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\PostingController;
+use App\Http\Controllers\ScrapingController;
 
 
 Route::get('/', function () {
@@ -35,6 +36,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/trade/save', [PostingController::class, 'save_trade'])->name('trade.save');
         Route::post('/delete', [PostingController::class, 'delete'])->name('delete');
         Route::get('/test', [HomeController::class, 'test'])->name('test');
+        Route::get('/scraping', [ScrapingController::class, 'scrape'])->name('scraping');
     });
 
     // permission=1なら誰のデータでも閲覧可能

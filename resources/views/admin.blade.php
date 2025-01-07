@@ -82,6 +82,12 @@
                             Reset
                         </x-danger-button>
                     </a>
+                    <!-- スクレイピング -->
+                    <a href="/scraping">
+                        <x-primary-button class="px-10 ml-5 lg:mr-10">
+                            scrape
+                        </x-primary-button>
+                    </a>
                 </div>
                 
                 <div class="py-10 font-normal">

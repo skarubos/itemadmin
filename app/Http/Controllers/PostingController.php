@@ -225,77 +225,15 @@ class PostingController extends Controller
         $validatedData = $validator->validated();
         // 編集対象の取引IDを取得（新規の場合はNULL）
         $tradeId = $validatedData['trade_id'] ?? null;
-        $memberCode = $validatedData['member_code'];
-        $tradeType = $validatedData['trade_type'];
-        $amount = $validatedData['amount'];
         $details = $validatedData['details'] ?? null;
         // 取引詳細(1:変更あり(新規登録を含む))
         $change_detail = $validatedData['change_detail'] ?? null;
-
-        // 編集の時は編集前データを保持
-        if ($tradeId) {
-            $oldTrading = Trading::find($tradeId);
-            $oldDetails = TradeDetail::where('trade_id', $tradeId)->get();
-        }
-
-        // トランザクション開始
+        
         DB::beginTransaction();
 
         try {
-            // 取引を新規登録or編集
-            $trading = $tradeId ? clone $oldTrading : new Trading();
-            if (!$trading) {
-                throw new \Exception("保存先($trading)を取得できませんでした");
-            }
-            
-            // 取引を新規登録or編集
-            $trading->fill($validatedData);
-            $trading->save();
-
-            // 変更ありの時、取引詳細を新規登録or編集
-            if ($change_detail == 1) {
-                $totalAmount = 0;
-                if ($tradeId) {
-                    // 既にある取引詳細を全削除
-                    TradeDetail::where('trade_id', $tradeId)->delete();
-                }
-                foreach ($details as $detail) {
-                    $totalAmount += $detail['amount'];
-                    $tradeDetail = new TradeDetail();
-                    $tradeDetail->trade_id = $trading->id;
-                    $tradeDetail->product_id = $detail['product_id'];
-                    $tradeDetail->amount = $detail['amount'];
-                    $tradeDetail->save();
-                }
-
-                // 合計セット数一致確認
-                if ($totalAmount != $amount) {
-                    throw new \Exception("「取引セット数」と「取引詳細の合計セット数」が一致しません");
-                }
-            }
-
-            // 編集前の取引が存在する場合
-            if ($tradeId) {
-                // 取引ユーザーが変更された場合は変更前のユーザーの最新注文&年間実績&資格手当を更新
-                if ($memberCode != $oldTrading->member_code) {
-                    $this->functionsController->refresh($oldTrading->member_code);
-                }
-                // 預入れor預出しの時の処理
-                if (in_array($oldTrading->trade_type, config('custom.depo_tradeTypes'))) {
-                    // 現在合計預けセット数＆DepoRealtimeテーブルを更新（削除）
-                    $this->functionsController->saveDepoForMember($oldTrading->member_code, $oldTrading->trade_type, $oldTrading->amount, $oldDetails, -1);
-                }
-            }
-
-            // 最新注文&年間実績&資格手当を更新
-            $this->functionsController->refresh($memberCode);
-
-            // 預入れor預出しの時の処理
-            if (in_array($tradeType, config('custom.depo_tradeTypes'))) {
-                // 現在合計預けセット数＆DepoRealtimeテーブルを更新（追加）
-                $this->functionsController->saveDepoForMember($memberCode, $tradeType, $amount, $details, 1);
-            }
-
+            // 新規登録or更新
+            $this->functionsController->update_trade($tradeId, $validatedData, $details, $change_detail);
             DB::commit();
 
             // データ保存成功時
@@ -317,6 +255,7 @@ class PostingController extends Controller
             }
         }
     }
+
 
     public function delete(Request $request)
     {

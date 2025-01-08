@@ -42,7 +42,8 @@ class Trading extends Model
         'member_code',
         'date',
         'trade_type',
-        'amount'
+        'amount',
+        'status',
     ];
 
     /**

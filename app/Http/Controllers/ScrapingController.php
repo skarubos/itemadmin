@@ -3,7 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\FunctionsController;
+use App\Models\RefreshLog;
+use Exception;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
@@ -20,6 +24,23 @@ class ScrapingController extends Controller
         $this->functionsController = $functionsController;
     }
     
+    public function testScrape() {
+        DB::beginTransaction();
+        try {
+            $howMany = $this->scrape();
+            DB::commit();
+            RefreshLog::create(['method' => 'scrape', 'caption' => '新規取引の取得', 'status' => 'success', 'error_message' => '登録件数：' . $howMany]);
+            return redirect()->route('admin')
+                ->with('success', '新規取引取得（scrape）が正常に行われました。登録件数（' . $howMany . '）');
+        } catch (Exception $e) {
+            DB::rollBack();
+            $error_message = explode("\n", $e->getMessage())[0];
+            RefreshLog::create(['method' => 'scrape', 'caption' => '新規取引の取得', 'status' => 'failure', 'error_message' => $error_message]);
+            \Log::error('新規取引の取得(scrape)に失敗: ' . $e->getMessage());
+            return back()->withErrors(['error' => '新規取引取得（scrape）に失敗しました。', 'エラーログ保存先：\storage\logs\laravel.log']);
+        }
+    }
+
     public function scrape() {
 
         $url_base = config('secure.url_base');
@@ -32,6 +53,7 @@ class ScrapingController extends Controller
             'cookies' => true,
             'allow_redirects' => true,
         ]);
+
 
 
 
@@ -54,7 +76,7 @@ class ScrapingController extends Controller
 
 //         // ログイン成功を確認
 //         if ($response->getStatusCode() !== 200) {
-//             die('ログインに失敗しました。');
+//             throw new Exception('ログインに失敗しました。');
 //         }
 
 //         // Set-Cookieヘッダーからクッキーを取得
@@ -67,7 +89,7 @@ class ScrapingController extends Controller
 
 
         $cookieName = 'laravel_session';
-        $cookieValue = 'eyJpdiI6Iit0TCszTk15aFRIQVZCN1BKeUxUSHc9PSIsInZhbHVlIjoiR3ZJVTlBNFBVcDd6a1pNQVh4Vk8wdkVFQUdLNVBIOWxDMmhaaWZZa0V3MFNWUFhBZ3VsQXlsdkc2VTVOcWJWdjdic3grXC9Xb0c2aVRuMHJIdk5qamp3PT0iLCJtYWMiOiIyYTIwNmNkZmI1MmEyNjUxYzE4NDE5YjAyMTNiNDU1M2Q5ZGU3MjgyZDY3MmQzNzQ4MjQ2Y2JiNjY3NzAyYWNmIn0%3D';
+        $cookieValue = 'eyJpdiI6IjVMOHhcLzM3KytJSWNhVzhJRExmbFN3PT0iLCJ2YWx1ZSI6IkNkV0dQUXYrdjA4amlqSGZqUnNpeUNLNEhwMnFiM0YrOHpmM3F2QnNOY1d3YUhxQ1BNSG55TWNXcDdrdFM4WVlkS0pBeGJ6T3BDT0xuOFwvSmMrNElkdz09IiwibWFjIjoiZDcyZWJiMjA1NTE5MjJiMGE3ZGNjYzY1NDMwM2E0MjBlNmYyNmM2ZDQyNmM1YmZhOWU4OWMxNDBiNTVlMTJjNiJ9';
 
         // Secure属性をtrueにしてクッキーを作成
         $setCookie = new SetCookie([
@@ -82,19 +104,15 @@ class ScrapingController extends Controller
         // CookieJarにクッキーを追加
         $jar = new CookieJar();
         $jar->setCookie($setCookie);
-
-        // 現在のクッキー情報を取得
-        $cookies = $jar->toArray();
+        $cookies = $jar->toArray(); // 現在のクッキー情報を取得（デバック表示用）
 // dd($cookies);
 
-        // ログイン後のページにアクセス
+        // 「月間取引一覧」ページにアクセス
         $response = $client->get($url_list, [
             'cookies' => $jar,
         ]);
         $html = $response->getBody()->getContents();
-        
-// dd($url_list,$cookieValue,$html);
-
+// dd($url_list,$cookies,$html);
 
         // DomCrawlerでHTMLを解析
         $crawler = new Crawler($html);
@@ -102,8 +120,53 @@ class ScrapingController extends Controller
         // titleタグを取得
         $title = $crawler->filter('h3.title')->text();
         if (str_contains($title, 'ログイン')) {
-            die("ログインページにリダイレクトされました。");
+            throw new Exception("ログインページにリダイレクトされました。");
+        } elseif (!str_contains($title, '月間取引一覧')) {
+            throw new Exception("「月間取引一覧」ページを取得できませんでした");
         }
+// dd($title);
+
+        // table-hoverのtbodyが存在しない場合（月間取引なしの場合）
+        if ($crawler->filter('tbody.table-hover')->count() == 0) {
+            return "今月の取引は存在しませんでした。";
+        }
+// dd($html);
+
+        // 新規取引のリストを取得
+        $newTrade = $this->getNewTrade($crawler);
+
+        if ($newTrade === []) {
+            return "未登録の取引は存在しませんでした。";
+        }
+        
+        $detailsArr = [];
+        foreach ($newTrade as $trade) {
+            // 取引詳細ページにアクセス
+            $response = $client->get($trade['link'], [
+                'cookies' => $jar,
+            ]);
+
+            // 取引データをHTMLから取得
+            $details = $this->getTradeData($response);
+            
+            // 取引データをデータベースに保存
+            $trade['status'] = 2;
+            $this->functionsController->update_trade(null, $trade, $details, 1);
+
+            $detailsArr[] = $details;
+        }
+// dd($cookieValue,$newTrade,$detailsArr);
+
+        return count($newTrade);
+        // return $cookieValue;
+
+        // return $data = [
+        //     'newTrade' => $newTrade,
+        //     'details' => $details,
+        // ];
+    }
+
+    public function getNewTrade($crawler) {
         // tableの内容を取得
         $tradeData = [];
         $crawler->filter('tbody.table-hover tr')
@@ -118,6 +181,7 @@ class ScrapingController extends Controller
                 ];
                 $tradeData[] = $row;
             });
+// dd($tradeData);
         // sales, in, outの3つ全てに値が存在しない要素をフィルタリング
         $tradeData = array_filter($tradeData, function($row) {
             return !empty($row['sales']) || !empty($row['in']) || !empty($row['out']);
@@ -126,14 +190,14 @@ class ScrapingController extends Controller
         foreach ($tradeData as &$row) {
             $row['check_no'] = $this->functionsController->getNo($row['link']);
         }
-// dd($title,$cookieValue,$tradeData,$html);
+// dd($tradeData);
 
         // 現在の月と一致する取引のcheck_noカラムの値を取得
         $arr = $this->functionsController->getJutyunoArr();
         
         // 未登録の取引のみ抽出し、member_code,amount,trade_typeを設定
         $newTrade = [];
-        foreach ($tradeData as $row) {
+        foreach ($tradeData as &$row) {
             if (in_array($row['check_no'], $arr)) {
                 continue;
             }
@@ -143,68 +207,49 @@ class ScrapingController extends Controller
             $this->functionsController->setTradeAttributes($row);
             $newTrade[] = $row;
         }
-        if ($newTrade === []) {
-            throw new \Exception("未登録の取引は存在しませんでした。");
-        }
-        
+// dd($arr,$tradeData, $newTrade);
+        return $newTrade;
+    }
+
+    public function getTradeData($response) {
+        $html = $response->getBody()->getContents();
+
+        // DomCrawlerでHTMLを解析
+        $crawler = new Crawler($html);
+
+        // tableの内容を取得
         $details = [];
-        foreach ($newTrade as $trade) {
-            // 取引詳細ページにアクセス
-            $response = $client->get($trade['link'], [
-                'cookies' => $jar,
-            ]);
-            $html = $response->getBody()->getContents();
-// dd($html);
-
-            // DomCrawlerでHTMLを解析
-            $crawler = new Crawler($html);
-
-            // tableの内容を取得
-            $detail = [];
-            $crawler->filter('tbody.table-hover')->first()->filter('tr')
-            ->each(function ($node) use (&$detail) {
-                if (!($node->filter('th')->eq(0)->count() > 0)) {
-                    $row = [
-                        'name' => $node->filter('td')->eq(0)->text(),
-                        'sales' => $node->filter('td')->eq(1)->text(),
-                        'in' => $node->filter('td')->eq(2)->text(),
-                        'out' => $node->filter('td')->eq(3)->text(),
-                    ];
-                    
-                    // nameからmember_codeを取得
-                    $row['product_id'] = $this->functionsController->getProcuctId($row['name']);
-                    
-                    // amountキーの作成
-                    $values = array_filter([
-                        'sales' => $row['sales'],
-                        'in' => $row['in'],
-                        'out' => $row['out']
-                    ], function($value) {
-                        return !empty($value);
-                    });
-                    if (count($values) > 1) {
-                        throw new \Exception('２種類以上の取引タイプが１つの取引に含まれています。');
-                    } elseif (count($values) === 1) {
-                        $row['amount'] = reset($values); // 存在する値を$row['amount']に格納
-                    } else {
-                        $row['amount'] = null; // 値が存在しない場合はnullを設定
-                    }
-                    $detail[] = $row;
+        $crawler->filter('tbody.table-hover')->first()->filter('tr')
+        ->each(function ($node) use (&$details) {
+            if (!($node->filter('th')->eq(0)->count() > 0)) {
+                $row = [
+                    'name' => $node->filter('td')->eq(0)->text(),
+                    'sales' => $node->filter('td')->eq(1)->text(),
+                    'in' => $node->filter('td')->eq(2)->text(),
+                    'out' => $node->filter('td')->eq(3)->text(),
+                ];
+                
+                // nameからmember_codeを取得
+                $row['product_id'] = $this->functionsController->getProductId($row['name']);
+                
+                // amountキーの作成
+                $values = array_filter([
+                    'sales' => $row['sales'],
+                    'in' => $row['in'],
+                    'out' => $row['out']
+                ], function($value) {
+                    return !empty($value);
+                });
+                if (count($values) > 1) {
+                    throw new Exception('２種類以上の取引タイプが１つの取引に含まれています。');
+                } elseif (count($values) === 1) {
+                    $row['amount'] = reset($values); // 存在する値を$row['amount']に格納
+                } else {
+                    $row['amount'] = null; // 値が存在しない場合はnullを設定
                 }
-            });
-            
-            $this->functionsController->update_trade(null, $trade, $detail, 1);
-
-            $details[] = $detail;
-        }
-
-        return count($newTrade);
-
-// dd($cookieValue,$tradeData,$arr,$newTrade,$details);
-
-        // return $data = [
-        //     'newTrade' => $newTrade,
-        //     'details' => $details,
-        // ];
+                $details[] = $row;
+            }
+        });
+        return $details;
     }
 }

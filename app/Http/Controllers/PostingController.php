@@ -13,6 +13,7 @@ use App\Models\TradeDetail;
 use App\Models\TradeType;
 use App\Http\Controllers\FunctionsController;
 use Carbon\Carbon;
+use Exception;
 
 // 取引の「新規登録 upload_check()」と「編集 show_edit_trade()」でビューへ渡すデータ形式を揃えるために使用
 // 取引記録のクラス
@@ -59,9 +60,12 @@ class PostingController extends Controller
         $this->functionsController = $functionsController;
     }
 
-    public function show_edit_trade(Request $request)
+    public function show_edit_trade_request(Request $request) {
+        $route = '/trade/edit/' . $request->input('edit_id') . '/0';
+        return redirect($route);
+    }
+    public function show_edit_trade($tradeId, $remain)
     {
-        $tradeId = $request->input('edit_id');
         $trade = Trading::
             with(['tradeType' => function($query) {
                 $query->select('trade_type', 'name');
@@ -91,11 +95,13 @@ class PostingController extends Controller
         $trade_types = TradeType::select('trade_type', 'name', 'caption')
             ->get();
 
-        return view('trade-edit', compact('trade', 'details', 'users', 'trade_types'));
+        return view('trade-edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
     }
     
     public function upload_check(Request $request)
     {
+        $remain = 0; // 自動登録の確認ではない
+
         $validator = Validator::make($request->all(), [
             'file' => 'nullable|mimes:xlsx,xls',
         ]);
@@ -120,7 +126,7 @@ class PostingController extends Controller
             $trade_types = TradeType::select('trade_type', 'name', 'caption')
                 ->get();
 
-            return view('trade-edit', compact('trade', 'details', 'users', 'trade_types'));
+            return view('trade-edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
         }
 
         $file = $request->file('file')->getRealPath();
@@ -201,13 +207,15 @@ class PostingController extends Controller
                 break;
         }
 
-        return view('trade-edit', compact('trade', 'details', 'users', 'trade_types'));
+        return view('trade-edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
     }
 
     public function save_trade(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'trade_id' => 'nullable|integer',
+            'status' => 'required|integer',
+            'remain' => 'required|integer',
             'member_code' => 'required|integer',
             'date' => 'required|date',
             'trade_type' => 'required|integer',
@@ -237,6 +245,13 @@ class PostingController extends Controller
             DB::commit();
 
             // データ保存成功時
+            $remain = $validatedData['remain'] - 1;
+            if ($remain > 0) {
+                return redirect()->route('trade.check')
+                    ->with('success', '取引ID【'.$tradeId.'】の確認完了！残り'.$remain.'件');
+            } elseif ($remain == 0) {
+                return redirect()->route('sales')->with('success', '取引ID【'.$tradeId.'】の確認完了！');
+            }
             if ($tradeId) {
                 return redirect()->route('admin')->with('success', '編集した取引データが正常に保存されました。');
             } else {
@@ -248,10 +263,10 @@ class PostingController extends Controller
             DB::rollBack();
             if ($tradeId) {
                 \Log::error('編集した取引の保存に失敗: ' . $e->getMessage());
-            return redirect()->route('admin')->withErrors(['error' => '編集した取引データの保存中にエラーが発生しました:  ' . $e->getMessage()]);
+                return redirect()->route('admin')->withErrors(['error' => '編集した取引データの保存中にエラーが発生しました:  ' . $e->getMessage()]);
             } else {
                 \Log::error('新規取引の保存に失敗: ' . $e->getMessage());
-            return redirect()->route('upload')->withErrors(['error' => '新規取引データの保存中にエラーが発生しました:  ' . $e->getMessage()]);
+                return redirect()->route('upload')->withErrors(['error' => '新規取引データの保存中にエラーが発生しました:  ' . $e->getMessage()]);
             }
         }
     }
@@ -275,7 +290,6 @@ class PostingController extends Controller
             $details = TradeDetail::where('trade_id', $tradeId)->get();
         }
 
-        // トランザクション開始
         DB::beginTransaction();
         try {
             // 外部キー制約無効化のためusersテーブルの関連レコードを更新
@@ -299,8 +313,6 @@ class PostingController extends Controller
                 $this->functionsController->saveDepoForMember($memberCode, $tradeType, $amount, $details, -1);
             }
 
-
-            // トランザクションコミット
             DB::commit();
 
             return redirect()->route('admin')->with('success', '取引をデータベースから正常に削除しました');
@@ -309,6 +321,51 @@ class PostingController extends Controller
             DB::rollBack();
             \Log::error('Data update(delete) failed: ' . $e->getMessage());
             return back()->withErrors(['error' => '取引の削除中にエラーが発生しました: ' . $e->getMessage()]);
+        }
+    }
+
+    public function save_product_check(Request $request) {
+        $productTypes = $request->input('product_type');
+        $id = $request->input('id');
+        $name = $request->input('name');
+
+        DB::beginTransaction();
+        try {
+            foreach ($productTypes as $i => $type) {
+                if (!$type) {
+                    throw new Exception("全ての商品種別を選択してください。");
+                }
+                // productsテーブルから未使用の最小種別idを取得
+                $maxId = Product::where('id', '>', $type * 100)
+                    ->where('id', '<=', $type * 100 + 99)
+                    ->max('id');
+                
+                // 新しい商品ID
+                $newId = $maxId + 1;
+
+                // 新しいProductレコードを作成
+                $product = new Product;
+                $product->id = $newId;
+                $product->name = $name[$i];
+                $product->product_type = $type;
+                $product->save();
+
+                // 関連するテーブルのproduct_idを更新
+                TradeDetail::where('product_id', $id[$i])->update(['product_id' => $newId]);
+                DepoRealtime::where('product_id', $id[$i])->update(['product_id' => $newId]);
+
+                // 古いProductレコードを削除
+                Product::find($id[$i])->delete();
+            }
+
+            DB::commit();
+
+            return redirect()->route('sales')->with('success', '新規商品の商品種別を登録しました。');
+        } catch (\Exception $e) {
+            // トランザクションロールバック
+            DB::rollBack();
+            \Log::error('商品種別の登録に失敗しました。: ' . $e->getMessage());
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 }

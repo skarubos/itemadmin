@@ -313,6 +313,7 @@ class FunctionsController extends Controller
         $logs = [
             'refresh_sub' => RefreshLog::where('method', 'refresh_sub')->orderBy('created_at', 'DESC')->first(),
             'refresh' => RefreshLog::where('method', 'refresh')->orderBy('created_at', 'DESC')->first(),
+            'scrape' => RefreshLog::where('method', 'scrape')->orderBy('created_at', 'DESC')->first(),
         ];
     
         foreach ($logs as $key => $log) {
@@ -324,13 +325,25 @@ class FunctionsController extends Controller
         return $logs;
     }
 
-    public function getProcuctId($name) {
-        // nameからmember_codeを取得
+    public function getProductId($name) {
+        // nameからproduct_idを取得
         $product = Product::where('name', $name)->first();
         if ($product) {
             return $product->id;
         } else {
-            throw new Exception("未登録の商品名があります。");
+            // throw new Exception("未登録の商品名があります。" . $name);
+            // productsテーブルのidが500以上で最も大きいidを取得
+            $maxId = Product::where('id', '>', 500)->max('id');
+            // 新しいidを決定
+            $newId = $maxId ? $maxId + 1 : 501;
+            // 新しいProductレコードを作成
+            $product = new Product();
+            $product->id = $newId;
+            $product->name = $name;
+            $product->product_type = 5;
+            $product->save();
+
+            return $newId;
         }
     }
 
@@ -374,11 +387,16 @@ class FunctionsController extends Controller
     }
 
     public function getJutyunoArr() {
-        // 現在の月と一致する取引のcheck_noカラムの値を取得
         $arr = [];
-        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
-        $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
-        $arr = Trading::whereBetween('date', [$startOfMonth, $endOfMonth])
+        // // 現在の月と一致する取引のcheck_noカラムの値を取得
+        // $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
+        // $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
+        // $arr = Trading::whereBetween('date', [$startOfMonth, $endOfMonth])
+        //     ->pluck('check_no')
+        //     ->toArray();
+
+        // 全ての期間のcheck_noカラムの値を取得
+        $arr = Trading::whereNotNull('check_no')
             ->pluck('check_no')
             ->toArray();
         return $arr;
@@ -394,7 +412,7 @@ class FunctionsController extends Controller
      * 取引の新規登録or更新を行う
      *
      * @param string $tradeId NULLなら新規登録
-     * @param array $tradeData ['member_code', 'trade_type', 'amount']を持つ
+     * @param array $tradeData ['member_code', 'trade_type', 'amount', 'status']を持つ
      * @param array $details 取引詳細(各要素に['product_id', 'amount']を持つ)
      * @param int $change_detail 新規登録か$detailsに変更がある場合に「１」を指定
      */

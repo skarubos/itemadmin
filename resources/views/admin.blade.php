@@ -96,8 +96,8 @@
                         @if (is_string($refreshLog))
                             <div class="p-3 mb-2 bg-red-200 dark:bg-red-800">{{ $refreshLog }}</div>
                         @else
-                            <div class="{{ $refreshLog->status == 'success' ? 'bg-green-200 dark:bg-green-800' : 'bg-red-200 dark:bg-red-800' }} p-3 mb-2">
-                                {{ $refreshLog->caption . "：" . $refreshLog->created_at }}
+                            <div class="{{ $refreshLog->status == 'success' ? 'bg-green-200 dark:bg-green-800' : 'bg-red-200 dark:bg-red-800' }} break-words p-3 mb-2">
+                                {{ $refreshLog->caption . "：" . $refreshLog->created_at . "：" . $refreshLog->error_message }}
                             </div>
                         @endif
                     @endforeach

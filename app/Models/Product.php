@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class Product extends Model
 {
     use HasFactory;
+    
+    public $timestamps = false;
 
     /**
      * テーブル名を指定

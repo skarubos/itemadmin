@@ -31,12 +31,17 @@ Route::middleware('auth')->group(function () {
         Route::get('/reset_all', [HomeController::class, 'reset_all'])->name('reset_all');
         Route::post('/show_dashboard', [HomeController::class, 'show_dashboard'])->name('show_dashboard');
         Route::get('/upload', [HomeController::class, 'upload'])->name('upload');
+        Route::get('/check/product', [HomeController::class, 'show_product_check'])->name('check.product');
+        Route::post('/check/product', [PostingController::class, 'save_product_check']);
+        Route::get('/trade/check', [HomeController::class, 'show_trade_check'])->name('trade.check');
+        Route::get('/trade/checked/{trade_id}/{remain}', [HomeController::class, 'trade_checked']);
+        Route::get('/trade/edit/{trade_id}/{remain}', [PostingController::class, 'show_edit_trade']);
+        Route::get('/trade/edit', [PostingController::class, 'show_edit_trade_request']);
         Route::post('/trade/edit', [PostingController::class, 'upload_check'])->name('trade.edit');
-        Route::get('/trade/edit', [PostingController::class, 'show_edit_trade']);
         Route::post('/trade/save', [PostingController::class, 'save_trade'])->name('trade.save');
         Route::post('/delete', [PostingController::class, 'delete'])->name('delete');
         Route::get('/test', [HomeController::class, 'test'])->name('test');
-        Route::get('/scraping', [ScrapingController::class, 'scrape'])->name('scraping');
+        Route::get('/scraping', [ScrapingController::class, 'testScrape'])->name('scraping');
     });
 
     // permission=1なら誰のデータでも閲覧可能

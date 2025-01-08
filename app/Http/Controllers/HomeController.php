@@ -12,8 +12,7 @@ use App\Models\Trading;
 use App\Models\TradeDetail;
 use App\Http\Controllers\FunctionsController;
 use Carbon\Carbon;
-use DOMDocument;
-use DOMXPath;
+use Exception;
 
 class HomeController extends Controller
 {
@@ -72,7 +71,55 @@ class HomeController extends Controller
         $latest = Trading::orderBy('updated_at', 'DESC')
             ->select('updated_at')
             ->first();
-        return view('sales-home', compact('users', 'latestTrades', 'latest'));
+        
+        // 自動登録された項目が存在するか確認
+        $newTrade = Trading::where('status', 2)->count();
+        $newProduct = Product::where('product_type', 5)->count();
+
+        return view('sales-home', compact('users', 'latestTrades', 'latest' ,'newTrade', 'newProduct'));
+    }
+
+    public function show_product_check() {
+        // 商品の種類
+        $types = ['食品', '日用品', '化粧品', 'その他'];
+
+        $newProducts = Product::where('product_type', 5)->get();
+
+        return view('check-product', compact('types', 'newProducts'));
+    }
+
+    public function show_trade_check() {
+        // 自動登録された取引を取得
+        $newTrade = Trading::with(['user' => function($query) {
+                $query->select('member_code', 'name');
+            }])
+            ->with(['tradeType' => function($query) {
+                $query->select('trade_type', 'name');
+            }])
+            ->where('status', 2)
+            ->get();
+
+        return view('trade-check', compact('newTrade'));
+    }
+
+    public function trade_checked($tradeId, $remain) {
+        try {
+            $trade = Trading::find($tradeId);
+            if (!$trade) {
+                throw new Exception('取引ID'.$tradeId.'が見つかりません。');
+            }
+            $trade->status = 1;
+            $trade->save();
+            $remain--;
+            if ($remain > 0) {
+                return redirect()->route('trade.check')
+                    ->with('success', '取引ID【'.$tradeId.'】の確認完了！残り'.$remain.'件');
+            } elseif ($remain == 0) {
+                return redirect()->route('sales')->with('success', '取引ID【'.$tradeId.'】の確認完了！');
+            }
+        } catch (Exception $e) {
+            return back()->withErrors(['error' => '更新に失敗！'.$e]);
+        }
     }
 
     public function sales_detail($member_code){

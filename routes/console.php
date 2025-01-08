@@ -24,8 +24,8 @@ Schedule::call(function () {
         RefreshLog::create(['method' => 'scrape', 'caption' => '新規取引の取得', 'status' => 'failure', 'error_message' => $error_message]);
         \Log::error('新規取引の取得(scrape)に失敗: ' . $e->getMessage());
     }
-})->dailyAt('05:55')->name('scraping');
-
+})->name('scraping');
+// ->dailyAt('05:55')
 Schedule::call(function () {
     $users = User::where('status', 1)->get();
     DB::beginTransaction();

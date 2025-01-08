@@ -19,12 +19,13 @@ class DatabaseSeeder extends Seeder
         //     'name' => 'Test User',
         //     'email' => 'test@example.com',
         // ]);
-        // $this->call(UsersTableSeeder::class);
-        // $this->call(ProductsTableSeeder::class);
-        // $this->call(TradeTypesSeeder::class);
-        // $this->call(Depo_RealtimeTableSeeder::class);
-        // $this->call(TradingsSeeder::class);
-        // $this->call(TradeDetailsSeeder::class);
+
+        $this->call(UsersTableSeeder::class);
+        $this->call(ProductsTableSeeder::class);
+        $this->call(TradeTypesSeeder::class);
+        $this->call(Depo_RealtimeTableSeeder::class);
+        $this->call(TradingsSeeder::class);
+        $this->call(TradeDetailsSeeder::class);
         $this->call(TradingsIdouSeeder::class);
     }
 }

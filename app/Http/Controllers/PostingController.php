@@ -61,6 +61,7 @@ class PostingController extends Controller
     }
 
     public function show_edit_trade_request(Request $request) {
+        // POSTされたIDをURLに含めてリダイレクト
         $route = '/trade/edit/' . $request->input('edit_id') . '/0';
         return redirect($route);
     }
@@ -100,8 +101,6 @@ class PostingController extends Controller
     
     public function upload_check(Request $request)
     {
-        $remain = 0; // 自動登録の確認ではない
-
         $validator = Validator::make($request->all(), [
             'file' => 'nullable|mimes:xlsx,xls',
         ]);
@@ -126,6 +125,7 @@ class PostingController extends Controller
             $trade_types = TradeType::select('trade_type', 'name', 'caption')
                 ->get();
 
+            $remain = 0;
             return view('trade-edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
         }
 
@@ -207,6 +207,7 @@ class PostingController extends Controller
                 break;
         }
 
+        $remain = 0;
         return view('trade-edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
     }
 

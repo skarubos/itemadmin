@@ -30,7 +30,7 @@
             <!-- Page Content -->
             <main>
                 @if ($errors->any())
-                    <div class="block bg-red-500 text-white p-10 py-2">
+                    <div class="block bg-red-500 text-white break-words p-10 py-2">
                         <ul>
                             @foreach ($errors->all() as $error)
                                 <li>{{ $error }}</li>
@@ -41,7 +41,7 @@
 
                 <!-- 書き込み成功メッセージ -->
                 @if (session('success'))
-                    <div class="block bg-green-500 text-white p-10 py-2">
+                    <div class="block bg-green-500 text-white break-words p-10 py-2">
                         {{ session('success') }}
                     </div>
                 @endif

@@ -13,19 +13,33 @@ use App\Models\RefreshLog;
 Schedule::call(function () {
     DB::beginTransaction();
     try {
+        $cookie = null;
+        $functions = new FunctionsController();
+        $month = $functions->getMonthArr(0);
         // サービスコンテナを使用してScrapingControllerを解決する
+        // scrape()メソッド内でFunctionsControllerのメソッドが呼び出されるため
         $controller = app(ScrapingController::class);
-        $howMany = $controller->scrape();
+        $howMany = $controller->scrape($month, $cookie);
         DB::commit();
-        RefreshLog::create(['method' => 'scrape', 'caption' => '新規取引の取得', 'status' => 'success', 'error_message' => $howMany]);
+        RefreshLog::create([
+            'method' => 'scrape',
+            'caption' => '新規取引の取得',
+            'status' => 'success',
+            'error_message' => '登録件数：' . $howMany,
+        ]);
     } catch (\Exception $e) {
         DB::rollBack();
         $error_message = explode("\n", $e->getMessage())[0];
-        RefreshLog::create(['method' => 'scrape', 'caption' => '新規取引の取得', 'status' => 'failure', 'error_message' => $error_message]);
-        \Log::error('新規取引の取得(scrape)に失敗: ' . $e->getMessage());
+        RefreshLog::create([
+            'method' => 'scrape',
+            'caption' => '新規取引の取得',
+            'status' => 'failure',
+            'error_message' => $error_message,
+        ]);
+        \Log::error('新規取引の取得(scrape)に失敗: ' . $error_message);
     }
-})->name('scraping');
-// ->dailyAt('05:55')
+})->dailyAt('23:55')->name('scraping');
+
 Schedule::call(function () {
     $users = User::where('status', 1)->get();
     DB::beginTransaction();
@@ -33,12 +47,21 @@ Schedule::call(function () {
         $controller = new FunctionsController();
         $controller->refresh_sub($users);
         DB::commit();
-        RefreshLog::create(['method' => 'refresh_sub', 'caption' => '資格手当更新', 'status' => 'success']);
+        RefreshLog::create([
+            'method' => 'refresh_sub',
+            'caption' => '資格手当更新',
+            'status' => 'success',
+        ]);
     } catch (\Exception $e) {
         DB::rollBack();
         $error_message = explode("\n", $e->getMessage())[0];
-        RefreshLog::create(['method' => 'refresh_sub', 'caption' => '資格手当更新', 'status' => 'failure', 'error_message' => $error_message]);
-        \Log::error('自動更新(refresh_sub)に失敗: ' . $e->getMessage());
+        RefreshLog::create([
+            'method' => 'refresh_sub',
+            'caption' => '資格手当更新',
+            'status' => 'failure',
+            'error_message' => $error_message,
+        ]);
+        \Log::error('自動更新(refresh_sub)に失敗: ' . $error_message);
     }
 })->dailyAt('00:09')->name('refresh_sub');
 
@@ -49,15 +72,20 @@ Schedule::call(function () {
         $controller = new FunctionsController();
         $controller->refresh($users);
         DB::commit();
-        RefreshLog::create(['method' => 'refresh', 'caption' => '年間実績&最新注文&資格手当の更新', 'status' => 'success']);
+        RefreshLog::create([
+            'method' => 'refresh',
+            'caption' => '年間実績&最新注文&資格手当の更新',
+            'status' => 'success',
+        ]);
     } catch (\Exception $e) {
         DB::rollBack();
         $error_message = explode("\n", $e->getMessage())[0];
-        RefreshLog::create(['method' => 'refresh', 'caption' => '年間実績&最新注文&資格手当の更新', 'status' => 'failure', 'error_message' => $error_message]);
-        \Log::error('自動更新(refresh)に失敗: ' . $e->getMessage());
+        RefreshLog::create([
+            'method' => 'refresh',
+            'caption' => '年間実績&最新注文&資格手当の更新',
+            'status' => 'failure',
+            'errLogor_message' => $error_message,
+        ]);
+        \Log::error('自動更新(refresh)に失敗: ' . $error_message);
     }
 })->monthlyOn(1, '00:09')->name('refresh_sales');
-
-
-// レンタルサーバーのcron設定での記述
-// * * * * * cd /home/cf425794/pixelumcraft.com/public_html/itemadmin && /usr/bin/php8.2 artisan schedule:run >> /dev/null 2>&1

@@ -20,13 +20,13 @@
                 @endphp
                 <div class="mb-4">
                     <label for="date" class="">注文日</label>
-                    <input type="date" name="date" id="date" value="{{ $date }}" {{ $remain != 0 ? 'readonly' : '' }} class="text-xl dark:bg-gray-900 mt-1 p-2 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
+                    <input type="date" name="date" id="date" value="{{ $date }}" {{ $remain != 0 ? 'readonly' : '' }} class="block w-full text-xl dark:bg-gray-900 mt-1 py-3 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
                 </div>
 
                 <!-- Amount Input -->
                 <div class="mb-4">
                     <label for="amount" class="">セット数</label>
-                    <input type="number" name="amount" id="amount" value="{{ $trade->amount }}" {{ $remain != 0 ? 'readonly' : '' }} class="text-xl dark:bg-gray-900 mt-1 p-2 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-gray-600 rounded-md">
+                    <input type="number" name="amount" id="amount" value="{{ $trade->amount }}" {{ $remain != 0 ? 'readonly' : '' }} class="block w-full text-xl dark:bg-gray-900 mt-1 py-3 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
                 </div>
 
                 <!-- member_code Dropdown -->

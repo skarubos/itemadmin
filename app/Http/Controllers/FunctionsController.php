@@ -56,7 +56,7 @@ class FunctionsController extends Controller
         } else {
             dd($codeOrUsers);
             // 想定外の引数の場合
-            throw new \InvalidArgumentException('更新すべき対象として、想定外の引数が渡されました。' . $codeOrUsers);
+            throw new Exception('更新すべき対象として、想定外の引数が渡されました。' . $codeOrUsers);
         }
     }
 
@@ -309,6 +309,27 @@ class FunctionsController extends Controller
         ];
     }
 
+    /**
+     * 指定された年数分の年月を'YYYYMM'形式で配列にして返す
+     * 0年分が指定された場合は、現在の年月のみを返す
+     * 
+     * @param int $years 取得する年数
+     */
+    public function getMonthArr($years) {
+        if ($years == 0) {
+            $month = Carbon::now()->format('Ym');
+            return $month;
+        } else {
+            $months = [];
+            $currentMonth = Carbon::now();
+            for ($i = 0; $i < 12 * $years; $i++) {
+                $months[] = $currentMonth->format('Ym');
+                $currentMonth->subMonth();
+            }
+            return $months;
+        }
+    }
+
     public function getRefreshLog(){
         $logs = [
             'refresh_sub' => RefreshLog::where('method', 'refresh_sub')->orderBy('created_at', 'DESC')->first(),
@@ -325,13 +346,161 @@ class FunctionsController extends Controller
         return $logs;
     }
 
+
+    /**
+     * 「月間取引一覧」ページから未登録の商品取引の一覧を取得、配列として返す
+     * 
+     * @param $crawler DomCrawlerで解析されたHTMLデータ
+     * @param int $month 参照すべき年月(取引が未登録かどうかの判定に使用)
+     */
+    public function getNewTrade($crawler, $month) {
+        // tbody要素から取引一覧を取得
+        $tradeData = [];
+        $crawler->filter('tbody.table-hover tr')->each(function ($node) use (&$tradeData) {
+            $tradeData[] = [
+                'link' => $node->filter('td')->eq(1)->filter('a')->attr('href'),
+                'date' => $node->filter('td')->eq(3)->text(),
+                'name' => $node->filter('td')->eq(6)->text(),
+                'sales' => $node->filter('td')->eq(7)->text(),
+                'in' => $node->filter('td')->eq(8)->text(),
+                'out' => $node->filter('td')->eq(9)->text(),
+            ];
+        });
+    
+        // sales, in, outの3つ全てに値が存在しない要素をフィルタリング
+        $tradeData = array_filter($tradeData, function($row) {
+            return !empty($row['sales']) || !empty($row['in']) || !empty($row['out']);
+        });
+    
+        // 指定された月の全取引のcheck_noを配列として取得
+        $arr = $this->getJutyunoArr($month);
+    
+        // 未登録の取引を抜粋、必要な属性を設定して新しい配列に入れ替える
+        $newTrade = [];
+        foreach ($tradeData as $row) {
+            // 'link'から'jutyuno'を抽出して追加
+            $row['jutyuno'] = $this->getNo($row['link']);
+            // 既に登録されている取引をスキップ
+            if (in_array($row['jutyuno'], $arr)) {
+                continue;
+            }
+            if ($row['sales']) {
+                $newTrade[] = $this->setTradeAttributes($row, 'sales');
+            }
+            if ($row['in']) {
+                $newTrade[] = $this->setTradeAttributes($row, 'in');
+            }
+            if ($row['out']) {
+                $newTrade[] = $this->setTradeAttributes($row, 'out');
+            }
+        }
+    
+        // NULLを除外して結果を返す
+        return array_filter($newTrade);
+    }
+
+    public function getJutyunoArr($month)
+    {
+        // 'YYYYMM'から'YYYY-MM'形式に変換
+        $formattedMonth = substr($month, 0, 4) . '-' . substr($month, 4, 2);
+    
+        $arr = Trading::whereNotNull('check_no')
+            ->where('date', 'like', $formattedMonth . '%') // 指定された月で絞り込み
+            ->pluck('check_no')
+            ->toArray();
+    
+        return $arr;
+    }
+    public function getNo($string) {
+        $string = substr($string, strlen(config('secure.url_forRemove')));
+        $string = substr($string, 0, -15);
+        return $string;
+    }
+    public function setTradeAttributes($row, $type) {
+        // 取引種別に関係なく共通の属性を設定
+        $trade = [
+            'check_no' => $row['jutyuno'],
+            'link' => $row['link'],
+            'date' => $row['date'],
+            'member_code' => $this->getMemberCode($row['name']),
+        ];
+    
+        // amount, trade_type属性を設定（判明する範囲で）
+        switch ($type) {
+            case 'sales': // 注文
+                $trade['type'] = 'sales';
+                $trade['amount'] = $row['sales'];
+                $trade['trade_type'] = $this->getTradeType($trade['member_code'], 110, 10);
+                break;
+            case 'in': // 預入れ
+                $trade['type'] = 'in';
+                $trade['amount'] = $row['in'];
+                $trade['trade_type'] = $this->getTradeType($trade['member_code'], 111, 11);
+                break;
+            case 'out': // 預け出し
+                $trade['type'] = 'out';
+                $trade['amount'] = $row['out'];
+                $trade['trade_type'] = $this->getTradeType($trade['member_code'], 121, 21);
+                break;
+        }
+    
+        return $trade;
+    }    
+    public function getMemberCode($name) {
+        if ($name == '店頭販売') {
+            return 3851;
+        }
+        // ユーザーを検索し、見つからない場合は代理店のmember_codeを返す
+        $user = User::where('name', $name)->first();
+        return $user->member_code ?? 3851;
+    }
+    private function getTradeType($memberCode, $defaultType, $alternativeType) {
+        // member_codeが代理店(3851)かどうかの判別
+        return $memberCode == 3851 ? $defaultType : $alternativeType;
+    }
+
+    /**
+     * 個別取引の詳細ページから、取引詳細（[name, product_id, amount]の一覧）を取得、配列として返す
+     * 
+     * @param $crawler DomCrawlerで解析されたHTMLデータ
+     * @param string $type 取引種別['sales', 'in', 'out']のどれか
+     */
+    public function getTradeData($crawler, $type) {
+        // tbody要素の内容を取得
+        $details = [];
+        $crawler->filter('tbody.table-hover')->first()->filter('tr')
+        ->each(function ($node) use (&$details, $type) {
+            if (!($node->filter('th')->eq(0)->count() > 0)) {
+                // 商品名の取得
+                $row['name'] = $node->filter('td')->eq(0)->text();
+              
+                // 商品名から商品IDを取得
+                $row['product_id'] = $this->getProductId($row['name']);
+
+                // セット数を取得
+                // 取引種別ごとにセット数が記入された列が異なるためmatch式で場合分け
+                $amount = match ($type) {
+                    'sales' => $node->filter('td')->eq(1)->text(),
+                    'in' => $node->filter('td')->eq(2)->text(),
+                    'out' => $node->filter('td')->eq(3)->text(),
+                    default => null,
+                };
+                // セット数の値が存在しない場合(１取引に２種類以上の取引種別が含まれる場合に発生)はその行はスキップ
+                if ($amount) {
+                    $row['amount'] = $amount;
+                    $details[] = $row;
+                }
+            }
+        });
+        return $details;
+    }
     public function getProductId($name) {
         // nameからproduct_idを取得
         $product = Product::where('name', $name)->first();
         if ($product) {
             return $product->id;
         } else {
-            // throw new Exception("未登録の商品名があります。" . $name);
+            // 新規の商品名の場合、その商品をproduct_idを500番台として仮登録
             // productsテーブルのidが500以上で最も大きいidを取得
             $maxId = Product::where('id', '>', 500)->max('id');
             // 新しいidを決定
@@ -346,74 +515,16 @@ class FunctionsController extends Controller
             return $newId;
         }
     }
+    
 
-    public function getMemberCode($name) {
-        if ($name == '店頭販売') {
-            return 3851;
-        }
 
-        $user = User::where('name', $name)->first();
-        if (!$user) {
-            throw new Exception("データベースに存在しない氏名です。");
-        }
-
-        return $user->member_code;
-    }
-
-    public function setTradeAttributes(&$row) {
-        if ($row['member_code'] == 3851) {
-            if ($row['sales']) {
-                $row['amount'] = $row['sales'];
-                $row['trade_type'] = 110;
-            } elseif ($row['in']) {
-                $row['amount'] = $row['in'];
-                $row['trade_type'] = 111;
-            } elseif ($row['out']) {
-                $row['amount'] = $row['out'];
-                $row['trade_type'] = 121;
-            }
-        } else {
-            if ($row['sales']) {
-                $row['amount'] = $row['sales'];
-                $row['trade_type'] = 10;
-            } elseif ($row['in']) {
-                $row['amount'] = $row['in'];
-                $row['trade_type'] = 11;
-            } elseif ($row['out']) {
-                $row['amount'] = $row['out'];
-                $row['trade_type'] = 21;
-            }
-        }
-    }
-
-    public function getJutyunoArr() {
-        $arr = [];
-        // // 現在の月と一致する取引のcheck_noカラムの値を取得
-        // $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
-        // $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
-        // $arr = Trading::whereBetween('date', [$startOfMonth, $endOfMonth])
-        //     ->pluck('check_no')
-        //     ->toArray();
-
-        // 全ての期間のcheck_noカラムの値を取得
-        $arr = Trading::whereNotNull('check_no')
-            ->pluck('check_no')
-            ->toArray();
-        return $arr;
-    }
-
-    public function getNo($string) {
-        $string = substr($string, strlen(config('secure.url_forRemove')));
-        $string = substr($string, 0, -15);
-        return $string;
-    }
 
     /**
      * 取引の新規登録or更新を行う
      *
      * @param string $tradeId NULLなら新規登録
-     * @param array $tradeData ['member_code', 'trade_type', 'amount', 'status']を持つ
-     * @param array $details 取引詳細(各要素に['product_id', 'amount']を持つ)
+     * @param array $tradeData ['member_code', 'date', 'trade_type', 'amount', 'status']を持つ（status=1:手動登録,2:自動登録(要確認取引)）
+     * @param array $details 取引詳細(各要素に['product_id', 'amount']が必須)
      * @param int $change_detail 新規登録か$detailsに変更がある場合に「１」を指定
      */
     public function update_trade($tradeId, $tradeData, $details, $change_detail) {

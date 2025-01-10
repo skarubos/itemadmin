@@ -21,7 +21,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        // ログインユーザーのpermissionに基づいて配列データを共有する
+        // ログインユーザーのpermissionに基づいてナビゲーションバー用の配列データを共有する
         View::composer('*', function ($view) {
             $user = Auth::user();
                      

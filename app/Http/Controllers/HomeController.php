@@ -347,9 +347,10 @@ class HomeController extends Controller
             $display = null;
         }
 
+        $monthArr = $this->FunctionsController->getMonthArr(2);
         $refreshLogs = $this->FunctionsController->getRefreshLog();
 
-        return view('admin', compact('users', 'trades', 'display', 'details', 'refreshLogs'));
+        return view('admin', compact('users', 'trades', 'display', 'details', 'monthArr', 'refreshLogs'));
     }
 
     public function refresh_member(Request $request) {

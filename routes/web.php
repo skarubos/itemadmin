@@ -6,6 +6,7 @@ use App\Http\Controllers\FunctionsController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PostingController;
 use App\Http\Controllers\ScrapingController;
+use App\Http\Controllers\TradeTypeController;
 
 
 Route::get('/', function () {
@@ -42,6 +43,15 @@ Route::middleware('auth')->group(function () {
         Route::post('/delete', [PostingController::class, 'delete'])->name('delete');
         Route::get('/test', [HomeController::class, 'test'])->name('test');
         Route::get('/scraping', [ScrapingController::class, 'testScrape'])->name('scraping');
+        Route::get('/setting', [HomeController::class, 'show_setting'])->name('setting');
+        Route::get('/tradeType/create', [TradeTypeController::class, 'show_create'])->name('tradeType.create');
+        Route::post('/tradeType/create', [TradeTypeController::class, 'store']);
+        Route::get('/tradeType/edit', [TradeTypeController::class, 'show_edit'])->name('tradeType.edit');
+        Route::post('/tradeType/edit', [TradeTypeController::class, 'store']);
+        Route::post('/tradeType/delete', [TradeTypeController::class, 'delete'])->name('tradeType.delete');
+        Route::get('/product/create', [ProductController::class, 'show_create'])->name('product.create');
+        Route::get('/product/edit', [ProductController::class, 'show_edit'])->name('product.edit');
+        Route::post('/product/edit', [ProductController::class, 'update_edit']);
     });
 
     // permission=1なら誰のデータでも閲覧可能

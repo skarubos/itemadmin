@@ -18,11 +18,11 @@ use Symfony\Component\DomCrawler\Crawler;
 
 class ScrapingController extends Controller
 {
-    // FunctionsControllerのメソッドを$this->functionsControllerで呼び出せるようにする
+    // FunctionsControllerのメソッドを$this->functionsで呼び出せるようにする
     protected $functionsController;
     public function __construct(FunctionsController $functionsController)
     {
-        $this->FunctionsController = $functionsController;
+        $this->functions = $functionsController;
     }
 
     public function testScrape(Request $request) {
@@ -137,13 +137,13 @@ class ScrapingController extends Controller
 // dd($title, $html);
 
         // 新規取引のリストを取得
-        $newTrade = $this->FunctionsController->getNewTrade($crawler, $month);
+        $newTrade = $this->functions->getNewTrade($crawler, $month);
         if ($newTrade === []) {
             return "未登録の取引は存在しませんでした。";
         }
 // dd($newTrade);
 
-        // 新規取引それぞれの取引詳細を取得
+        // 新規取引それぞれの取引詳細を取得、DBに保存
         $detailsArr = [];
         foreach ($newTrade as $trade) {
             // 取引詳細ページにアクセス
@@ -153,12 +153,12 @@ class ScrapingController extends Controller
             $html = $response->getBody()->getContents();
             $crawler = new Crawler($html);
 
-            // 取引データをHTMLから取得
-            $details = $this->FunctionsController->getTradeData($crawler, $trade['type']);
+            // 取引詳細をHTMLから取得
+            $details = $this->functions->getTradeData($crawler, $trade['type']);
             
-            // 取引データをデータベースに保存
+            // 取引をDBに保存
             $trade['status'] = 2; // （status=2:確認が必要な取引）
-            $this->FunctionsController->update_trade(null, $trade, $details, 1);
+            $this->functions->update_trade(null, $trade, $details, 1);
 
             $detailsArr[] = $details;
         }

@@ -9,11 +9,6 @@ class Trading extends Model
 {
     use HasFactory;
 
-    /**
-     * テーブル名を指定
-     *
-     * @var string
-     */
     protected $table = 'tradings';
     
     public function user()
@@ -25,18 +20,7 @@ class Trading extends Model
         return $this->belongsTo(TradeType::class, 'trade_type', 'trade_type');
     }
 
-    /**
-     * 主キーのカラム名
-     *
-     * @var string
-     */
     protected $primaryKey = 'id';
-
-    /**
-     * 複数代入可能な属性
-     *
-     * @var array
-     */
     protected $fillable = [
         'check_no',
         'member_code',
@@ -45,15 +29,16 @@ class Trading extends Model
         'amount',
         'status',
     ];
+    protected $dates = ['created_at', 'updated_at'];
 
     /**
-     * 日付属性のキャスト
+     * 指定したtrade_typeが存在するか確認するメソッド
      *
-     * @var array
+     * @param int $value
+     * @return bool
      */
-    protected $dates = [
-        'created_at',
-        'updated_at'
-    ];
+    public static function tradeTypeExists($value)
+    {
+        return self::where('trade_type', $value)->exists();
+    }
 }
-

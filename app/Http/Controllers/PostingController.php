@@ -15,49 +15,13 @@ use App\Http\Controllers\FunctionsController;
 use Carbon\Carbon;
 use Exception;
 
-// 取引の「新規登録 upload_check()」と「編集 show_edit_trade()」でビューへ渡すデータ形式を揃えるために使用
-// 取引記録のクラス
-class Trade
-{
-    public $id;
-    public $name;
-    public $member_code;
-    public $date;
-    public $trade_type;
-    public $amount;
-
-    public function __construct($id, $name, $member_code, $date, $trade_type, $amount)
-    {
-        $this->id = $id;
-        $this->name = $name;
-        $this->member_code = $member_code;
-        $this->date = $date;
-        $this->trade_type = $trade_type;
-        $this->amount = $amount;
-    }
-}
-// 取引詳細のクラス
-class Detail
-{
-    public $product_id;
-    public $name;
-    public $amount;
-
-    public function __construct($product_id, $name, $amount)
-    {
-        $this->product_id = $product_id;
-        $this->name = $name;
-        $this->amount = $amount;
-    }
-}
-
 class PostingController extends Controller
 {
-    // FunctionsControllerのメソッドを$this->functionsControllerで呼び出せるようにする
+    // FunctionsControllerのメソッドを$this->functionsで呼び出せるようにする
     private $functionsController;
     public function __construct(FunctionsController $functionsController)
     {
-        $this->functionsController = $functionsController;
+        $this->functions = $functionsController;
     }
 
     public function show_edit_trade_request(Request $request) {
@@ -79,14 +43,14 @@ class PostingController extends Controller
             ->first();
         
         // 取引詳細
-        $tableDetails = TradeDetail::with('product')
+        $details = TradeDetail::with('product')
             ->where('trade_id', $tradeId)
             ->get();
-        // 新規登録時と形式を合わせるためDetailインスタンスに入れ替え
-        $details = [];
-        foreach ($tableDetails as $tableDetail) {
-            $details[] = new Detail($tableDetail->product_id, $tableDetail->product->name, $tableDetail->amount);
-        }
+
+        // 新規登録時と形式を合わせるため、各要素にproductのnameを設定
+        $details->each(function ($tradeDetail) {
+            $tradeDetail->name = $tradeDetail->product->name;
+        });
 
         // ドロップダウンリスト表示に必要なデータを取得
         $users = User::where('status', 1)
@@ -109,9 +73,7 @@ class PostingController extends Controller
         };
 
         // 取引データを格納するインスタンス
-        $trade = new Trade(null, null, null, null, null, null);
-        // 取引詳細を格納する配列
-        $details = [];
+        $trade = new Trading;
 
         // ファイルが存在しない場合の処理
         if (!$request->hasFile('file')) {
@@ -172,6 +134,9 @@ class PostingController extends Controller
             }
         }
 
+        // 取引詳細を格納する配列
+        $details = [];
+        
         // 商品別セット数の一覧を$details[]に取得
         if ($startRow !== null && $endRow !== null) {
             for ($i = $startRow; $i < $endRow; $i++) {
@@ -179,7 +144,11 @@ class PostingController extends Controller
                 $product = Product::where('name', $sheetData[$i][0])->first();
                 if ($product) {
                     // Detailインスタンスを配列に格納
-                    $details[] = new Detail($product->id, $product->name, $sheetData[$i][$col123]);
+                    $detail = new TradeDetail;
+                    $detail->product_id = $product->id;
+                    $detail->name = $product->name;
+                    $detail->amount = $sheetData[$i][$col123];
+                    $details[] = $detail;
                 }
             }
         } else {
@@ -242,7 +211,7 @@ class PostingController extends Controller
 
         try {
             // 新規登録or更新
-            $this->functionsController->update_trade($tradeId, $validatedData, $details, $change_detail);
+            $this->functions->update_trade($tradeId, $validatedData, $details, $change_detail);
             DB::commit();
 
             // データ保存成功時
@@ -305,13 +274,13 @@ class PostingController extends Controller
             // 注文の時の処理
             if (in_array($tradeType, config('custom.sales_tradeTypes'))) {
                 // 最新注文&年間実績&資格手当を更新
-                $this->functionsController->refresh($memberCode);
+                $this->functions->refresh($memberCode);
             }
 
             // 預入れor預出しの時の処理
             if (in_array($tradeType, config('custom.depo_tradeTypes'))) {
                 // 現在合計預けセット数＆DepoRealtimeテーブルを更新
-                $this->functionsController->saveDepoForMember($memberCode, $tradeType, $amount, $details, -1);
+                $this->functions->saveDepoForMember($memberCode, $tradeType, $amount, $details, -1);
             }
 
             DB::commit();

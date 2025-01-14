@@ -10,17 +10,19 @@ use App\Models\Product;
 use App\Models\DepoRealtime;
 use App\Models\Trading;
 use App\Models\TradeDetail;
+use App\Models\TradeType;
+use App\Http\Controllers\MyService;
 use App\Http\Controllers\FunctionsController;
 use Carbon\Carbon;
 use Exception;
 
 class HomeController extends Controller
 {
-    // FunctionsControllerのメソッドを$this->FunctionsControllerで呼び出せるようにする
+    // FunctionsControllerのメソッドを$this->functionsで呼び出せるようにする
     private $functionsController;
     public function __construct(FunctionsController $functionsController)
     {
-        $this->FunctionsController = $functionsController;
+        $this->functions = $functionsController;
     }
 
     public function dashboard(){
@@ -124,7 +126,7 @@ class HomeController extends Controller
 
     public function sales_detail($member_code){
         $years = config('custom.sales_howManyYears');
-        $data = $this->FunctionsController->get_sales_detail($member_code, $years);
+        $data = $this->functions->get_sales_detail($member_code, $years);
         return view('sales-detail', compact('data'));
     }
 
@@ -183,12 +185,13 @@ class HomeController extends Controller
             ->select('member_code', 'name', 'depo_status')
             ->orderBy('depo_status', 'DESC')
             ->get();
+        $sumDepoStatus = $items->sum('depo_status');
 
-        return view('depo-home', compact('items'));
+        return view('depo-home', compact('items', 'sumDepoStatus'));
     }
     
     public function depo_detail($member_code){
-        $data = $this->FunctionsController->get_depo_detail($member_code);
+        $data = $this->functions->get_depo_detail($member_code);
         return view('depo-detail', compact('data'));
     }
 
@@ -347,8 +350,8 @@ class HomeController extends Controller
             $display = null;
         }
 
-        $monthArr = $this->FunctionsController->getMonthArr(2);
-        $refreshLogs = $this->FunctionsController->getRefreshLog();
+        $monthArr = $this->functions->getMonthArr(2);
+        $refreshLogs = $this->functions->getRefreshLog();
 
         return view('admin', compact('users', 'trades', 'display', 'details', 'monthArr', 'refreshLogs'));
     }
@@ -357,7 +360,7 @@ class HomeController extends Controller
         $member_code = $request->input('member_code');
         DB::beginTransaction();
         try {
-            $this->FunctionsController->refresh($member_code);
+            $this->functions->refresh($member_code);
             DB::commit();
             return redirect()->route('sales')
                 ->with('success', $member_code . ':データの更新が正常に行われました。【最新注文&年間実績&資格手当】');
@@ -372,7 +375,7 @@ class HomeController extends Controller
         $users = User::where('status', 1)->get();
         DB::beginTransaction();
         try {
-            $this->FunctionsController->refresh($users);
+            $this->functions->refresh($users);
             DB::commit();
             return redirect()->route('sales')
                 ->with('success', 'データの更新が正常に行われました。【最新注文&年間実績&資格手当】');
@@ -400,6 +403,14 @@ class HomeController extends Controller
             \Log::error('更新のリセット(reset_all)に失敗: ' . $e->getMessage());
             return back()->withErrors(['error' => '更新のリセット(reset_all)に失敗しました。', 'エラーログ保存先：\storage\logs\laravel.log']);
         }
+    }
+
+    
+    public function show_setting() {
+        $tradeTypes = TradeType::orderBy('trade_type', 'ASC')->get();
+        $products = Product::get();
+
+        return view('setting', compact('tradeTypes', 'products'));
     }
 
 }

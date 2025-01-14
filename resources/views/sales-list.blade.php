@@ -14,19 +14,19 @@
         <div class="mb-2">
             <a 
                 href="/trade/{{ $user->member_code }}/{{ $trading->id }}"
-                class="flex justify-between max-w-72 mx-auto py-2 px-8 text-center bg-gray-100 dark:bg-gray-900 font-sans shadow-md bg-clip-border rounded-3xl"
+                class="flex justify-between max-w-72 mx-auto py-2 px-6 text-center bg-gray-100 dark:bg-gray-900 font-sans shadow-md bg-clip-border rounded-3xl"
             >
             <span class="text-lg">
                 {{ \Carbon\Carbon::parse($trading->date)->format('n月j日') }} 
             </span>
-            <span class="text-lg">
+            <span class="text-base">
                 ({{ $trading->tradeType->name }}) 
             </span>
             <span class="font-bold">
                 {{ $trading->amount }}
             </span>
             </a>
-            </div>
+        </div>
         @endforeach
         @endforeach
     </div>

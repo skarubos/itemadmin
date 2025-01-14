@@ -9,11 +9,8 @@ class TradeType extends Model
 {
     use HasFactory;
 
-    /**
-     * テーブル名を指定
-     *
-     * @var string
-     */
+    public $timestamps = false;
+
     protected $table = 'trade_types';
 
     public function depoRealtimes()
@@ -27,30 +24,48 @@ class TradeType extends Model
         return $this->hasMany(Trading::class, 'trade_type', 'trade_type');
     }
 
-    /**
-     * 主キーのカラム名
-     *
-     * @var string
-     */
     protected $primaryKey = 'id';
 
-    /**
-     * 複数代入可能な属性
-     *
-     * @var array
-     */
-    protected $fillable = [
-        'trade_type',
-        'name',
-        'caption'
-    ];
+    protected $fillable = ['trade_type', 'name', 'caption'];
+
+    protected $dates = ['created_at'];
 
     /**
-     * 日付属性のキャスト
+     * レコードを新規作成または更新するメソッド
      *
-     * @var array
+     * @param int $value
+     * @return bool
      */
-    protected $dates = [
-        'created_at'
-    ];
+    public static function createOrUpdate($data)
+    {
+        return self::updateOrCreate(
+            ['id' => $data['id'] ?? null],
+            [
+                'trade_type' => $data['trade_type'],
+                'name' => $data['name'],
+                'caption' => $data['caption']
+            ]
+        );
+    }
+
+    /**
+     * 指定したtrade_typeが既に存在するか確認するメソッド
+     *
+     * @param int $value
+     * @return bool
+     */
+    public static function tradeTypeExists($value)
+    {
+        return self::where('trade_type', $value)->exists();
+    }
+
+    /**
+     * レコードを削除するメソッド
+     *
+     * @param int $id
+     */
+    public static function deleteById($id)
+    {
+        self::find($id)->delete();
+    }
 }

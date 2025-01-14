@@ -485,7 +485,7 @@ class FunctionsController extends Controller
                     'out' => $node->filter('td')->eq(3)->text(),
                     default => null,
                 };
-                // セット数の値が存在しない場合(１取引に２種類以上の取引種別が含まれる場合に発生)はその行はスキップ
+                // セット数の値が存在しない場合(取引に２種類以上の取引種別が含まれる場合に発生)はその行はスキップ
                 if ($amount) {
                     $row['amount'] = $amount;
                     $details[] = $row;

@@ -7,7 +7,7 @@
                     <!-- 営業所ページへのリンク -->
                     <form action="/show_dashboard" method="POST" enctype="multipart/form-data" class="mb-5">
                         @csrf
-                        <label for="user_dashboard" class="block pb-1 lg:pb-0">ユーザーのダッシュボードを表示</label>
+                        <label for="user_dashboard" class="block pb-1">ユーザーのダッシュボードを表示</label>
                         <select name="user_dashboard" id="user_dashboard" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
                             @foreach($users as $user)
                                 <option value="{{ $user['member_code'] }}" class="">
@@ -15,7 +15,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        <x-primary-button class="px-5 my-2 lg:ml-5">
+                        <x-primary-button class="px-5 my-2 lg:my-0 lg:ml-5">
                             show Dashboard
                         </x-primary-button>
                     </form>
@@ -23,7 +23,7 @@
                     <!-- 個人を更新 -->
                     <form action="/refresh_member" method="POST" enctype="multipart/form-data" class="mb-5">
                         @csrf
-                        <label for="member_code" class="block pb-1 lg:pb-0">更新するユーザーを選択</label>
+                        <label for="member_code" class="block pb-1">更新するユーザーを選択</label>
                         <select name="member_code" id="member_code" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
                             @foreach($users as $user)
                                 <option value="{{ $user['member_code'] }}" class="">
@@ -31,7 +31,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        <x-primary-button class="px-5 my-2 lg:ml-5">
+                        <x-primary-button class="px-5 my-2 lg:my-0 lg:ml-5">
                             refresh
                         </x-primary-button>
                     </form>
@@ -39,7 +39,7 @@
                     <!-- 取引を編集 -->
                     <form action="/trade/edit" method="GET" enctype="multipart/form-data" class="mb-5">
                         @csrf
-                        <label for="edit_id" class="block pb-1 lg:pb-0">編集する取引を選択</label>
+                        <label for="edit_id" class="block pb-1">編集する取引を選択</label>
                         <select name="edit_id" id="edit_id" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
                             @foreach($trades as $trade)
                                 <option value="{{ $trade['id'] }}" class="">
@@ -47,7 +47,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        <x-primary-button class="px-11 my-2 lg:ml-5">
+                        <x-primary-button class="px-11 my-2 lg:my-0 lg:ml-5">
                             edit
                         </x-primary-button>
                     </form>
@@ -55,7 +55,7 @@
                     <!-- 削除 -->
                     <form action="/delete" method="POST" enctype="multipart/form-data" onsubmit="return confirmDelete()" class="mb-5">
                         @csrf
-                        <label for="trade_id" class="block pb-1 lg:pb-0">削除する取引を選択</label>
+                        <label for="trade_id" class="block pb-1">削除する取引を選択</label>
                         <select name="trade_id" id="trade_id" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
                             @foreach($trades as $trade)
                                 <option value="{{ $trade['id'] }}" class="">
@@ -63,7 +63,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        <x-primary-button class="px-7 my-2 lg:ml-5">
+                        <x-primary-button class="px-7 my-2 lg:my-0 lg:ml-5">
                             Delete
                         </x-primary-button>
                     </form>
@@ -71,16 +71,16 @@
                     <!-- スクレイピング -->
                     <form action="/scraping" method="GET" enctype="multipart/form-data">
                         @csrf
-                        <label for="month" class="block pb-1 lg:pb-0">指定の月の取引を取得</label>
-                        <select name="month" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
+                        <label for="month" class="block pb-1">指定の月の取引を取得</label>
+                        <select name="month" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 mb-1 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
                             @foreach($monthArr as $month)
                                 <option value="{{ $month }}" class="">
                                 {{ $month }}
                                 </option>
                             @endforeach
                         </select>
-                        <input type="text" name="cookie" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
-                        <x-primary-button class="px-7 my-2 lg:ml-5">
+                        <input type="text" name="cookie" placeholder="Cookie..." class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
+                        <x-primary-button class="px-7 my-2 lg:my-0 lg:ml-5">
                             Scrape
                         </x-primary-button>
                     </form>

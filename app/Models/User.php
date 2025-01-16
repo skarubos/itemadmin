@@ -12,11 +12,6 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'email',
@@ -35,11 +30,6 @@ class User extends Authenticatable
         'status',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
@@ -67,6 +57,12 @@ class User extends Authenticatable
     public function getAuthIdentifierName()
     {
         return 'member_code';
+    }
+
+    // permission カラムが 1 の場合に管理者とする
+    public function isAdmin()
+    {
+        return $this->permission == 1;
     }
 
 }

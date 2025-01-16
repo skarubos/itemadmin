@@ -330,21 +330,6 @@ class FunctionsController extends Controller
         }
     }
 
-    public function getRefreshLog(){
-        $logs = [
-            'refresh_sub' => RefreshLog::where('method', 'refresh_sub')->orderBy('created_at', 'DESC')->first(),
-            'refresh' => RefreshLog::where('method', 'refresh')->orderBy('created_at', 'DESC')->first(),
-            'scrape' => RefreshLog::where('method', 'scrape')->orderBy('created_at', 'DESC')->first(),
-        ];
-    
-        foreach ($logs as $key => $log) {
-            if (!$log) {
-                $logs[$key] = "自動更新ログが存在しません。";
-            }
-        }
-    
-        return $logs;
-    }
 
 
     /**
@@ -589,6 +574,37 @@ class FunctionsController extends Controller
             // 現在合計預けセット数＆DepoRealtimeテーブルを更新（追加）
             $this->saveDepoForMember($tradeData['member_code'], $tradeData['trade_type'], $tradeData['amount'], $details, 1);
         }
+    }
+
+
+    /**
+     * 最終更新日を取得
+     *
+     * @return string 最終更新日('Y年n月j日') または '更新なし'
+     */
+    public function getLastUpdateDate()
+    {
+        $trade = Trading::getLatestTrade();
+        $log = RefreshLog::getLastUpdate('scrape', true);
+
+        // 両方が null の場合
+        if (is_null($trade) && is_null($log)) {
+            return "更新なし";
+        }
+
+        // 片方が null の場合の処理
+        if (is_null($trade)) {
+            $date = Carbon::parse($log->created_at);
+        } elseif (is_null($log)) {
+            $date = Carbon::parse($trade->date);
+        } else {
+            // 両方が取得できた場合
+            $tradeDate = Carbon::parse($trade->date);
+            $logDate = Carbon::parse($log->created_at);
+            $date = $tradeDate->greaterThan($logDate) ? $tradeDate : $logDate;
+        }
+
+        return $date->format('Y年n月j日');
     }
 
 }

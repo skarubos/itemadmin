@@ -6,6 +6,7 @@ use App\Http\Controllers\FunctionsController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PostingController;
 use App\Http\Controllers\ScrapingController;
+use App\Http\Controllers\TradingController;
 use App\Http\Controllers\TradeTypeController;
 
 
@@ -34,8 +35,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/upload', [HomeController::class, 'upload'])->name('upload');
         Route::get('/check/product', [HomeController::class, 'show_product_check'])->name('check.product');
         Route::post('/check/product', [PostingController::class, 'save_product_check']);
-        Route::get('/trade/check', [HomeController::class, 'show_trade_check'])->name('trade.check');
-        Route::get('/trade/checked/{trade_id}/{remain}', [HomeController::class, 'trade_checked']);
+        Route::get('/trade/check', [TradingController::class, 'show_trade_check'])->name('trade.check');
+        Route::get('/trade/checked/{trade_id}/{remain}', [TradingController::class, 'change_status']);
         Route::get('/trade/edit/{trade_id}/{remain}', [PostingController::class, 'show_edit_trade']);
         Route::get('/trade/edit', [PostingController::class, 'show_edit_trade_request']);
         Route::post('/trade/edit', [PostingController::class, 'upload_check'])->name('trade.edit');
@@ -52,6 +53,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/product/create', [ProductController::class, 'show_create'])->name('product.create');
         Route::get('/product/edit', [ProductController::class, 'show_edit'])->name('product.edit');
         Route::post('/product/edit', [ProductController::class, 'update_edit']);
+        Route::get('/user/create', [ProductController::class, 'show_create'])->name('user.create');
+        Route::get('/user/edit', [ProductController::class, 'show_edit'])->name('user.edit');
+        Route::post('/user/edit', [ProductController::class, 'update_edit']);
     });
 
     // permission=1なら誰のデータでも閲覧可能
@@ -62,7 +66,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales/member/{member_code}', [HomeController::class, 'sales_detail'])->name('sales.member');
         Route::get('/sales/member/{member_code}/list', [HomeController::class, 'sales_list'])->name('sales.list');
         Route::get('/sub/{member_code}', [HomeController::class, 'sub_detail'])->name('sub.detail');
-        Route::get('/trade/{member_code}/{trade_id}', [HomeController::class, 'trade_detail'])->name('trade.detail');
+        Route::get('/trade/{member_code}/{trade_id}', [HomeController::class, 'show_trade'])->name('trade.detail');
     });
 });
 

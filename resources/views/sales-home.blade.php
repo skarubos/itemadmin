@@ -5,14 +5,14 @@
         @if($newTrade != 0)
         <a href="/trade/check" class="">
             <div class="text-lg text-center py-5 mx-auto mb-5 bg-yellow-200 dark:bg-sky-900 rounded-2xl shadow-lg">
-                新規<span class="text-2xl font-bold">取引</span> が <span class="text-2xl font-bold">{{ $newTrade }}件</span> あります!
+                新規<span class="text-2xl font-bold">取引</span>が <span class="text-2xl font-bold">{{ $newTrade }}件</span> あります!
             </div>
         </a>
         @endif
         @if($newProduct != 0)
         <a href="/check/product" class="">
             <div class="text-lg text-center py-5 mx-auto mb-5 bg-yellow-200 dark:bg-sky-900 rounded-2xl shadow-lg">
-                新規<span class="text-2xl font-bold">商品</span> が <span class="text-2xl font-bold">{{ $newProduct }}件</span> あります!
+                新規<span class="text-2xl font-bold">商品</span>が <span class="text-2xl font-bold">{{ $newProduct }}件</span> あります!
             </div>
         </a>
         @endif
@@ -22,7 +22,7 @@
                 実績
             </p>
             <p class="mx-auto pt-1 text-center">
-                最終更新：{{ \Carbon\Carbon::parse($latest->updated_at)->format('Y年n月j日') }}
+                最終更新：{{ $lastUpdate }}
             </p>
         </div>
         <div class="grid grid-cols-1 divide-y">

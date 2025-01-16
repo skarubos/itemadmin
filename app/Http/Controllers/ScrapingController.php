@@ -25,35 +25,47 @@ class ScrapingController extends Controller
         $this->functions = $functionsController;
     }
 
-    public function testScrape(Request $request) {
+    public function testScrape(Request $request)
+    {
         // $month = '202412';
         $month = $request->input('month');
         $cookieValue = $request->input('cookie') ?? null;
         
         DB::beginTransaction();
         try {
-            $howMany = $this->scrape($month, $cookieValue);
-// dd($howMany);
+            $r = $this->scrape($month, $cookieValue, true);
+// dd($r);
             DB::commit();
-            RefreshLog::create(['method' => 'scrape', 'caption' => '新規取引の取得', 'status' => 'success', 'error_message' => '登録件数：' . $howMany]);
+            RefreshLog::create(
+                [
+                    'method' => 'scrape',
+                    'caption' => '新規取引の取得',
+                    'status' => 'success',
+                    'error_message' => '登録件数('.$r['count'].')：Cookie='.$r['cookie'],
+                ]);
             return redirect()->route('admin')
-                ->with('success', '新規取引取得（scrape）が正常に行われました。登録件数：' . $howMany);
+                ->with('success', '新規取引取得（scrape）が正常に行われました。登録件数：'.$r['count']);
         } catch (Exception $e) {
             DB::rollBack();
             $error_message = explode("\n", $e->getMessage())[0];
-            RefreshLog::create(['method' => 'scrape', 'caption' => '新規取引の取得', 'status' => 'failure', 'error_message' => $error_message]);
+            RefreshLog::create(
+                [
+                    'method' => 'scrape',
+                    'caption' => '新規取引の取得',
+                    'status' => 'failure',
+                    'error_message' => $error_message,
+                ]);
             \Log::error('新規取引の取得(scrape)に失敗: ' . $e->getMessage());
             return back()->withErrors(['error' => '新規取引取得（scrape）に失敗しました。', 'エラーログ保存先：\storage\logs\laravel.log']);
         }
     }
-    public function scrape($month, $cookieValue) {
-    // public function testScrape(Request $request) {
-    //     $month = $request->input('month');
-
+    public function scrape($month, $cookieValue, $test)
+    {
         $url_base = config('secure.url_base');
         $url_login = config('secure.url_login');
         $url_list = config('secure.url_list');
         $domain = config('secure.domain');
+        $cookieName = 'laravel_session';
 // dd($url_base);
 
         $client = new Client([
@@ -61,8 +73,6 @@ class ScrapingController extends Controller
             'cookies' => true,
             'allow_redirects' => true,
         ]);
-
-        $cookieName = 'laravel_session';
 
         // クッキーが入力されていなければ、ログインして取得
         if (!$cookieValue) {
@@ -164,8 +174,14 @@ class ScrapingController extends Controller
         }
 // dd($cookieValue,$newTrade,$detailsArr);
 
+        if ($test) {
+            return [
+                'count' => count($newTrade),
+                'cookie' => $cookieValue,
+            ];
+        }
         return count($newTrade);
-        // return $cookieValue;
+        
     }
 
 

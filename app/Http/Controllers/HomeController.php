@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Http\Requests\IdRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Models\DepoRealtime;
 use App\Models\Trading;
 use App\Models\TradeDetail;
 use App\Models\TradeType;
+use App\Models\RefreshLog;
 use App\Http\Controllers\MyService;
 use App\Http\Controllers\FunctionsController;
 use Carbon\Carbon;
@@ -25,60 +27,32 @@ class HomeController extends Controller
         $this->functions = $functionsController;
     }
 
-    public function dashboard(){
-        $user = Auth::user();
-        if ($user->permission == 1) {
-            return redirect()->route('sales');
-        } else {
-            $latest = Trading::orderBy('updated_at', 'DESC')
-            ->select('updated_at')
-            ->first();
-            return view('dashboard', compact('user', 'latest'));
-        }
-    }
-    public function show_dashboard(Request $request){
-        $request->validate([
-            'user_dashboard' => 'required|integer',
-        ]);
-        $member_code = $request->input('user_dashboard');
-        $user = User::where('member_code', $member_code)->first();
-        $latest = Trading::orderBy('updated_at', 'DESC')
-            ->select('updated_at')
-            ->first();
-        return view('dashboard', compact('user', 'latest'));
-    }
- 
-    public function upload() {
-        return view('upload');
-    }
 
-    public function sales_home() {
-        // depo_statusが0ではない行を取得
+    public function sales_home()
+    {
+        // ユーザーの一覧を取得
         $users = User::where('status', 1)
             ->select('id', 'name', 'member_code', 'sales', 'latest_trade', 'sub_leader', 'sub_number', 'sub_now')
             ->orderBy('priority', 'ASC')
             ->get();
+
         // latest_tradeに基づいて各ユーザーの最新取引を取得
         $latestTrades = [];
         foreach ($users as $user) {
             if ($user->latest_trade) {
-                $latest = Trading::where('id', $user->latest_trade)
-                    ->select('id', 'date', 'amount')
-                    ->first();
-                if ($latest) {
-                    $latestTrades[$user->id] = $latest;
-                }
+                $latestTrades[$user->id] = Trading::getTrade($user->latest_trade);
+                Carbon::parse($latestTrades[$user->id]->date)->format('y/n/j');
             }
         }
-        $latest = Trading::orderBy('updated_at', 'DESC')
-            ->select('updated_at')
-            ->first();
+
+        // 最終更新日を取得
+        $lastUpdate = $this->functions->getLastUpdateDate();
         
         // 自動登録された項目が存在するか確認
         $newTrade = Trading::where('status', 2)->count();
         $newProduct = Product::where('product_type', 5)->count();
 
-        return view('sales-home', compact('users', 'latestTrades', 'latest' ,'newTrade', 'newProduct'));
+        return view('sales-home', compact('users', 'latestTrades', 'lastUpdate' ,'newTrade', 'newProduct'));
     }
 
     public function show_product_check() {
@@ -88,40 +62,6 @@ class HomeController extends Controller
         $newProducts = Product::where('product_type', 5)->get();
 
         return view('check-product', compact('types', 'newProducts'));
-    }
-
-    public function show_trade_check() {
-        // 自動登録された取引を取得
-        $newTrade = Trading::with(['user' => function($query) {
-                $query->select('member_code', 'name');
-            }])
-            ->with(['tradeType' => function($query) {
-                $query->select('trade_type', 'name');
-            }])
-            ->where('status', 2)
-            ->get();
-
-        return view('trade-check', compact('newTrade'));
-    }
-
-    public function trade_checked($tradeId, $remain) {
-        try {
-            $trade = Trading::find($tradeId);
-            if (!$trade) {
-                throw new Exception('取引ID'.$tradeId.'が見つかりません。');
-            }
-            $trade->status = 1;
-            $trade->save();
-            $remain--;
-            if ($remain > 0) {
-                return redirect()->route('trade.check')
-                    ->with('success', '取引ID【'.$tradeId.'】の確認完了！残り'.$remain.'件');
-            } elseif ($remain == 0) {
-                return redirect()->route('sales')->with('success', '取引ID【'.$tradeId.'】の確認完了！');
-            }
-        } catch (Exception $e) {
-            return back()->withErrors(['error' => '更新に失敗！'.$e]);
-        }
     }
 
     public function sales_detail($member_code){
@@ -141,14 +81,8 @@ class HomeController extends Controller
         $startDate = Carbon::now()->subYears($years - 1)->startOfYear();
         $endDate = Carbon::now()->endOfYear();
     
-        $tradings = Trading::with(['tradeType' => function($query) {
-                $query->select('trade_type', 'name');
-            }])
-            ->where('member_code', $member_code)
-            ->whereBetween('date', [$startDate, $endDate])
-            ->select('id', 'date', 'trade_type', 'amount')
-            ->orderBy('date', 'DESC')
-            ->get();
+        // 取引を取得
+        $tradings = Trading::getTradings($member_code, $startDate, $endDate);
     
         // 年ごとに取引記録をグループ化
         $groupedTradings = $tradings->groupBy(function($date) {
@@ -156,27 +90,6 @@ class HomeController extends Controller
         });
     
         return view('sales-list', compact('user', 'groupedTradings'));
-    }
-
-    public function sales_trade($member_code, $trade_id) {
-        $trade = Trading::with(['tradeType' => function($query) {
-                $query->select('trade_type', 'name', 'caption');
-            }])
-            ->with(['user' => function($query) {
-                $query->select('member_code', 'name');
-            }])
-            ->where('member_code', $member_code)
-            ->where('id', $trade_id)
-            ->select('id', 'member_code', 'date', 'trade_type', 'amount')
-            ->first();
-        
-        abort_unless($trade, 404);
-
-        $details = TradeDetail::with('product')
-            ->where('trade_id', $trade_id)
-            ->get();
-
-        return view('sales-trade', compact('trade', 'details'));
     }
 
     public function depo_home() {
@@ -298,63 +211,105 @@ class HomeController extends Controller
         return view('sub-detail', compact('user', 'groupMembers', 'groupTradings', 'currentDate'));
     }
 
-    public function trade_detail($member_code, $trade_id) {
-        $trade = Trading::with(['tradeType' => function($query) {
-                $query->select('trade_type', 'name');
-            }])
-            ->with(['user' => function($query) {
-                $query->select('member_code', 'name');
-            }])
-            ->where('member_code', $member_code)
-            ->where('id', $trade_id)
-            ->select('id', 'member_code', 'date', 'trade_type', 'amount')
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public function dashboard()
+    {
+        $user = Auth::user();
+        if ($user->isAdmin()) {
+            return redirect()->route('sales');
+        }
+        // 最終更新日を取得
+        $lastUpdate = $this->functions->getLastUpdateDate();
+        return view('dashboard', compact('user', 'lastUpdate'));
+    }
+    public function show_dashboard(IdRequest $request)
+    {
+        $user = User::where('member_code', $request->input('id'))
+            ->select('member_code', 'name')
             ->first();
-        
-        abort_unless($trade, 404);
 
-        $details = $details = TradeDetail::with('product')
-            ->where('trade_id', $trade_id)
-            ->get();
-
-        return view('trade-detail', compact('trade', 'details'));
+        // 最終更新日を取得
+        $lastUpdate = $this->functions->getLastUpdateDate();
+        return view('dashboard', compact('user', 'lastUpdate'));
     }
 
-    public function admin(Request $request){
+    public function show_trade($member_code, $trade_id)
+    {
+        $trade = Trading::getTrade($trade_id, $member_code);
+        abort_unless($trade, 404);
+
+        $details = TradeDetail::getTradeDetail($trade_id);
+
+        return view('trading.detail', compact('trade', 'details'));
+    }
+
+    public function upload() {
+        return view('upload');
+    }
+
+    public function admin(Request $request)
+    {
         $users = User::where('status', 1)
-            ->select('id', 'name', 'member_code', 'sales', 'latest_trade', 'sub_leader', 'sub_now')
+            ->select('id', 'name', 'member_code', 'sub_leader', 'sub_now')
             ->orderBy('priority', 'ASC')
             ->get();
 
-        $trades = Trading::with(['user' => function($query) {
-                $query->select('member_code', 'name');
-            }])
-            ->orderBy('date', 'DESC')
-            ->get();
-
-        if ($request->isMethod('post')) {
-            $request->validate([
-                'trading' => 'required|integer',
-            ]);
-            $tradeId = $request->input('trading');
-            $display = Trading::with(['user' => function($query) {
-                    $query->select('member_code', 'name');
-                }])
-                ->where('id', $tradeId)
-                ->select('member_code', 'amount')
-                ->first();
-            $details = TradeDetail::with('product')
-                ->where('trade_id', $tradeId)
-                ->get();
-        } else {
-            $details = null;
-            $display = null;
-        }
+        $trades = Trading::getTradings();
 
         $monthArr = $this->functions->getMonthArr(2);
-        $refreshLogs = $this->functions->getRefreshLog();
 
-        return view('admin', compact('users', 'trades', 'display', 'details', 'monthArr', 'refreshLogs'));
+        // 自動更新の最新ログを取得
+        $methods = ['scrape', 'refresh_sub', 'refresh'];
+        $refreshLogs = RefreshLog::getLastUpdate($methods);
+
+        return view('admin', compact('users', 'trades', 'monthArr', 'refreshLogs'));
     }
+
+    public function show_setting() {
+        // 「設定」タブ表示に必要な要素を全て配列に格納
+        $items = [
+            [
+                'label' => '取引種別',
+                'key' => ['trade_type', 'name'],
+                'route' => ['tradeType.create', 'tradeType.edit']
+            ],
+            [
+                'label' => '商品',
+                'key' => ['product_type', 'name'],
+                'route' => ['product.create', 'product.edit']
+            ],
+            [
+                'label' => 'メンバー',
+                'key' => ['member_code', 'name'],
+                'route' => ['user.create', 'user.edit']
+            ],
+        ];
+
+        // 選択リストへ表示する内容
+        $selects = [];
+        $selects[] = TradeType::orderBy('trade_type', 'ASC')->get();
+        $selects[] = Product::get();
+        $selects[] = User::orderBy('priority', 'ASC')->get();
+
+        return view('setting', compact('items', 'selects'));
+    }
+
 
     public function refresh_member(Request $request) {
         $member_code = $request->input('member_code');
@@ -389,7 +344,7 @@ class HomeController extends Controller
     public function reset_all() {
         DB::beginTransaction();
         try {
-            DB::table('users')->where('status', 1)
+            User::where('status', 1)
                 ->update([
                     'sales' => 0,
                     'latest_trade' => null,
@@ -404,13 +359,4 @@ class HomeController extends Controller
             return back()->withErrors(['error' => '更新のリセット(reset_all)に失敗しました。', 'エラーログ保存先：\storage\logs\laravel.log']);
         }
     }
-
-    
-    public function show_setting() {
-        $tradeTypes = TradeType::orderBy('trade_type', 'ASC')->get();
-        $products = Product::get();
-
-        return view('setting', compact('tradeTypes', 'products'));
-    }
-
 }

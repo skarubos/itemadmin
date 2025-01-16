@@ -19,7 +19,7 @@ Schedule::call(function () {
         // サービスコンテナを使用してScrapingControllerを解決する
         // scrape()メソッド内でFunctionsControllerのメソッドが呼び出されるため
         $controller = app(ScrapingController::class);
-        $howMany = $controller->scrape($month, $cookie);
+        $howMany = $controller->scrape($month, $cookie, false);
         DB::commit();
         RefreshLog::create([
             'method' => 'scrape',

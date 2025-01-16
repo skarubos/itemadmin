@@ -7,8 +7,8 @@
                     <!-- 営業所ページへのリンク -->
                     <form action="/show_dashboard" method="POST" enctype="multipart/form-data" class="mb-5">
                         @csrf
-                        <label for="user_dashboard" class="block pb-1">ユーザーのダッシュボードを表示</label>
-                        <select name="user_dashboard" id="user_dashboard" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
+                        <label for="id" class="block pb-1">ユーザーのダッシュボードを表示</label>
+                        <select name="id" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
                             @foreach($users as $user)
                                 <option value="{{ $user['member_code'] }}" class="">
                                     {{ $user->name . "（" . $user->sub_now . "）" }}

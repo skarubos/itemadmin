@@ -1,6 +1,6 @@
 <x-app-layout>
 <div class="pt-3 pb-20">
-    <div class="max-w-xl mx-auto lg:px-8">
+    <div class="max-w-xl mx-auto">
     <div class="bg-white dark:bg-gray-800 font-sans text-gray-900 dark:text-gray-100 px-6 py-6 shadow-sm bg-clip-border rounded-lg">
         <div class="my-4">
             <p class="text-center text-xl font-bold leading-snug tracking-normal antialiased">
@@ -13,7 +13,7 @@
                 <p>{{ \Carbon\Carbon::parse($trade->date)->format('Y年n月j日') }}</p>
                 <p>{{ $trade->amount }} セット</p>
             </div>
-            <div class="mx-5 mb-5 py-4 px-3 bg-white dark:bg-gray-800 rounded-2xl">
+            <div class="mx-5 mb-5 py-4 px-3 sm:px-8 bg-white dark:bg-gray-800 rounded-2xl">
                 <p class="text-xl mb-1">氏名 <span class="text-2xl font-bold">{{ $trade->user->name }}</span></p>
                 <p class="text-xl">取引種別　<span class="text-2xl font-bold">{{ $trade->tradeType->name }}</span></p>
             </div>

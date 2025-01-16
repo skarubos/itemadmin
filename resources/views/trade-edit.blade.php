@@ -2,8 +2,9 @@
 
 <div class="py-6">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="text-xl bg-white dark:bg-gray-800 font-medium text-gray-900 dark:text-gray-100 overflow-hidden p-6 shadow-sm sm:rounded-lg">
-            <form action="/trade/save" method="POST" enctype="multipart/form-data" class="lg:flex">
+        <div class="text-xl bg-white dark:bg-gray-800 font-medium text-gray-900 dark:text-gray-100 overflow-hidden px-4 py-8 shadow-sm sm:rounded-lg">
+            <form action="/trade/save" method="POST" enctype="multipart/form-data">
+            <div class="sm:flex">
                 @csrf
                 <!-- 取引ID（非表示） -->
                 <input type="hidden" name="trade_id" value="{{ $trade->id ?? '' }}">
@@ -79,9 +80,12 @@
                 @endif
 
                 </div>
-                <x-primary-button class="float-right px-16 py-3 mt-8 lg:m-4">
+            </div>
+            <div class="w-3/4 pt-6 mx-auto sm:w-1/2">
+                <x-primary-button class="w-full py-3">
                     保存
                 </x-primary-button>
+            </div>
             </form>
         </div>
     </div>

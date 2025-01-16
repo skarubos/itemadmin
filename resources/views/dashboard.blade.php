@@ -37,7 +37,7 @@
         </div>
         @endif
         <p class="mx-auto pt-10 text-center">
-        最終更新：{{ \Carbon\Carbon::parse($latest->updated_at)->format('Y年n月j日') }}<br>
+        最終更新：{{ $lastUpdate }}<br>
         （注文日から数日後に反映されます。）
         </p>
     </div>

@@ -236,10 +236,8 @@ class FunctionsController extends Controller
      *               - 'user': ユーザー情報 (member_code, name, depo_status) を含むオブジェクト
      *               - 'details': 預けの詳細情報を格納したコレクション。各要素は DepoRealtime モデルのインスタンスで、
      *                            product リレーション（商品情報）を含む。
-     *
-     * @throws Exception データベース操作中にエラーが発生した場合
      */
-    public function get_depo_detail($memberCode){
+    public function getMemberDepo($memberCode){
         $user = User::where('member_code', $memberCode)
             ->select('member_code', 'name', 'depo_status')
             ->first();

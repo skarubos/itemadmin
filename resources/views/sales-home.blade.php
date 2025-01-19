@@ -10,7 +10,7 @@
         </a>
         @endif
         @if($newProduct != 0)
-        <a href="/check/product" class="">
+        <a href="/product/check" class="">
             <div class="text-lg text-center py-5 mx-auto mb-5 bg-yellow-200 dark:bg-sky-900 rounded-2xl shadow-lg">
                 新規<span class="text-2xl font-bold">商品</span>が <span class="text-2xl font-bold">{{ $newProduct }}件</span> あります!
             </div>

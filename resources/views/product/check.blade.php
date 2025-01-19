@@ -7,31 +7,33 @@
                 新規商品の種類を登録
             </p>
         </div>
-        <form action="/check/product" method="POST" enctype="multipart/form-data" class="">
-        @csrf
-        @foreach($newProducts as $i => $product)
-        <!-- 商品ID（非表示） -->
-        <input type="hidden" name="id[{{ $i }}]" value="{{ $product->id }}">
-        <!-- 商品名（非表示） -->
-        <input type="hidden" name="name[{{ $i }}]" value="{{ $product->name }}">
+        @foreach($newProducts as $product)
         <div class="mb-5 py-5 font-sans bg-gray-100 dark:bg-gray-900 rounded-2xl">
+        <form action="/product/edit" method="POST" enctype="multipart/form-data" class="">
+            @csrf
+            <!-- 商品ID（非表示） -->
+            <input type="hidden" name="id" value="{{ $product->id }}">
+            <!-- 商品名（非表示） -->
+            <input type="hidden" name="name" value="{{ $product->name }}">
+            <!-- 残り件数（非表示） -->
+            <input type="hidden" name="remain" value="{{ count($newProducts) }}">
             <div class="text-center py-3">
                 {{ $product->name }}
             </div>
             <div class="mb-4">
-                <select name="product_type[{{ $i }}]" class="block text-xl dark:bg-gray-900 mx-auto mt-1 py-3 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
+                <select name="product_type" class="block text-xl dark:bg-gray-900 mx-auto mt-1 py-3 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
                     <option value="">商品の種類を選択</option>
                     @foreach($types as $index => $type)
                         <option value="{{ $index + 1 }}">{{ $type }}</option>
                     @endforeach
                 </select>
             </div>
+            <x-primary-button class="block w-2/3 py-3 mt-8 mx-auto">
+                保存
+            </x-primary-button>
+        </form>
         </div>
         @endforeach
-        <x-primary-button class="w-full py-3 mt-8">
-            保存
-        </x-primary-button>
-        </form>
     </div>
     </div>
 </div>

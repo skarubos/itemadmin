@@ -30,7 +30,7 @@
         </div>
         <form action="/trade/edit" method="POST" enctype="multipart/form-data" class="px-7 pb-5 relative">
             @csrf
-            <input type="hidden"  name="file">
+            <input type="hidden"  name="file" value="">
             <x-primary-button class="float-right px-10">
                 登録ページへ
             </x-primary-button>

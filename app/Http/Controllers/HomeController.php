@@ -28,87 +28,9 @@ class HomeController extends Controller
     }
 
 
-    public function sales_home()
-    {
-        // ユーザーの一覧を取得
-        $users = User::where('status', 1)
-            ->select('id', 'name', 'member_code', 'sales', 'latest_trade', 'sub_leader', 'sub_number', 'sub_now')
-            ->orderBy('priority', 'ASC')
-            ->get();
 
-        // latest_tradeに基づいて各ユーザーの最新取引を取得
-        $latestTrades = [];
-        foreach ($users as $user) {
-            if ($user->latest_trade) {
-                $latestTrades[$user->id] = Trading::getTrade($user->latest_trade);
-                Carbon::parse($latestTrades[$user->id]->date)->format('y/n/j');
-            }
-        }
 
-        // 最終更新日を取得
-        $lastUpdate = $this->functions->getLastUpdateDate();
-        
-        // 自動登録された項目が存在するか確認
-        $newTrade = Trading::where('status', 2)->count();
-        $newProduct = Product::where('product_type', 5)->count();
-
-        return view('sales-home', compact('users', 'latestTrades', 'lastUpdate' ,'newTrade', 'newProduct'));
-    }
-
-    public function show_product_check() {
-        // 商品の種類
-        $types = ['食品', '日用品', '化粧品', 'その他'];
-
-        $newProducts = Product::where('product_type', 5)->get();
-
-        return view('check-product', compact('types', 'newProducts'));
-    }
-
-    public function sales_detail($member_code){
-        $years = config('custom.sales_howManyYears');
-        $data = $this->functions->get_sales_detail($member_code, $years);
-        return view('sales-detail', compact('data'));
-    }
-
-    public function sales_list($member_code)
-    {
-        $user = User::where('member_code', $member_code)
-            ->select('member_code', 'name')
-            ->first();
-
-        // 開始年と終了年を計算
-        $years = config('custom.sales_howManyYears');
-        $startDate = Carbon::now()->subYears($years - 1)->startOfYear();
-        $endDate = Carbon::now()->endOfYear();
-    
-        // 取引を取得
-        $tradings = Trading::getTradings($member_code, $startDate, $endDate);
-    
-        // 年ごとに取引記録をグループ化
-        $groupedTradings = $tradings->groupBy(function($date) {
-            return Carbon::parse($date->date)->format('Y');
-        });
-    
-        return view('sales-list', compact('user', 'groupedTradings'));
-    }
-
-    public function depo_home() {
-        // depo_statusが0ではない行を取得
-        $items = User::where('depo_status', '!=', 0)
-            ->select('member_code', 'name', 'depo_status')
-            ->orderBy('depo_status', 'DESC')
-            ->get();
-        $sumDepoStatus = $items->sum('depo_status');
-
-        return view('depo-home', compact('items', 'sumDepoStatus'));
-    }
-    
-    public function depo_detail($member_code){
-        $data = $this->functions->get_depo_detail($member_code);
-        return view('depo-detail', compact('data'));
-    }
-
-    public function depo_detail_history($member_code) {
+    public function show_member_depo_history($member_code) {
         $user = User::where('member_code', $member_code)
             ->select('member_code', 'name', 'depo_status')
             ->first();
@@ -183,33 +105,10 @@ class HomeController extends Controller
             }
         }
 
-        return view('depo-detail-history', compact('user', 'tradings', 'products', 'amountsSelected'));
+        return view('member.depo-history', compact('user', 'tradings', 'products', 'amountsSelected'));
     }
 
-    public function sub_detail($member_code){
-        $user = User::where('member_code', $member_code)
-            ->select('member_code', 'name', 'sub_leader', 'sub_number', 'sub_now')
-            ->first();
-        $groupMembers = User::where('sub_number', $user->sub_leader)
-            ->select('member_code', 'name')
-            ->get();
-        
-        // 過去6ヵ月の傘下営業所の取引を取得
-        $groupTradings = [];
-        $currentDate = Carbon::now();
-        $startDate = $currentDate->copy()->subMonths(config('custom.sub_monthsCovered'))->addDay();
-        foreach ($groupMembers as $member) {
-            $tradings = Trading::where('date', '>=', $startDate)
-                ->where('member_code', $member->member_code)
-                ->whereIn('trade_type', config('custom.sales_tradeTypesEigyosho'))
-                ->select('id', 'member_code', 'date', 'trade_type', 'amount')
-                ->orderBy('date', 'ASC')
-                ->get();
-            $groupTradings[] = $tradings;
-        }
-        
-        return view('sub-detail', compact('user', 'groupMembers', 'groupTradings', 'currentDate'));
-    }
+
 
 
 
@@ -236,17 +135,15 @@ class HomeController extends Controller
         }
         // 最終更新日を取得
         $lastUpdate = $this->functions->getLastUpdateDate();
-        return view('dashboard', compact('user', 'lastUpdate'));
+        return view('member.dashboard', compact('user', 'lastUpdate'));
     }
     public function show_dashboard(IdRequest $request)
     {
-        $user = User::where('member_code', $request->input('id'))
-            ->select('member_code', 'name')
-            ->first();
+        $user = User::where('member_code', $request->input('id'))->first();
 
         // 最終更新日を取得
         $lastUpdate = $this->functions->getLastUpdateDate();
-        return view('dashboard', compact('user', 'lastUpdate'));
+        return view('member.dashboard', compact('user', 'lastUpdate'));
     }
 
     public function show_trade($member_code, $trade_id)
@@ -259,18 +156,114 @@ class HomeController extends Controller
         return view('trading.detail', compact('trade', 'details'));
     }
 
-    public function upload() {
+    public function show_sales_home()
+    {
+        // ユーザーの一覧を取得
+        $users = User::where('status', 1)
+            ->select('id', 'name', 'member_code', 'sales', 'latest_trade', 'sub_leader', 'sub_number', 'sub_now')
+            ->orderBy('priority', 'ASC')
+            ->get();
+
+        // latest_tradeに基づいて各ユーザーの最新取引を取得
+        $latestTrades = [];
+        foreach ($users as $user) {
+            if ($user->latest_trade) {
+                $latestTrades[$user->id] = Trading::getTrade($user->latest_trade);
+                Carbon::parse($latestTrades[$user->id]->date)->format('y/n/j');
+            }
+        }
+
+        // 最終更新日を取得
+        $lastUpdate = $this->functions->getLastUpdateDate();
+        
+        // 自動登録された項目が存在するか確認
+        $newTrade = Trading::where('status', 2)->count();
+        $newProduct = Product::where('product_type', 5)->count();
+
+        return view('sales-home', compact('users', 'latestTrades', 'lastUpdate' ,'newTrade', 'newProduct'));
+    }
+
+    public function show_member_sales($member_code){
+        // 表示する年数を取得
+        $years = config('custom.sales_howManyYears');
+        // 年数分の実績データを取得
+        $data = $this->functions->get_sales_detail($member_code, $years);
+        return view('member.sales', compact('data'));
+    }
+
+    public function show_member_sales_list($member_code)
+    {
+        $user = User::where('member_code', $member_code)
+            ->select('member_code', 'name')
+            ->first();
+
+        // 開始年と終了年を計算
+        $years = config('custom.sales_howManyYears');
+        $startDate = Carbon::now()->subYears($years - 1)->startOfYear();
+        $endDate = Carbon::now()->endOfYear();
+    
+        // 取引を取得
+        $tradings = Trading::getTradings($member_code, $startDate, $endDate);
+    
+        // 年ごとに取引記録をグループ化
+        $groupedTradings = $tradings->groupBy(function($date) {
+            return Carbon::parse($date->date)->format('Y');
+        });
+    
+        return view('member.sales-list', compact('user', 'groupedTradings'));
+    }
+
+    public function show_depo_home() {
+        // depo_statusが0ではない行を取得
+        $items = User::where('depo_status', '!=', 0)
+            ->select('member_code', 'name', 'depo_status')
+            ->orderBy('depo_status', 'DESC')
+            ->get();
+        $sumDepoStatus = $items->sum('depo_status');
+
+        return view('depo-home', compact('items', 'sumDepoStatus'));
+    }
+    
+    public function show_member_depo($member_code){
+        $data = $this->functions->getMemberDepo($member_code);
+        return view('member.depo', compact('data'));
+    }
+    
+    public function show_member_sub($member_code){
+        $user = User::where('member_code', $member_code)
+            ->select('member_code', 'name', 'sub_leader', 'sub_number', 'sub_now')
+            ->first();
+        // 傘下営業所を取得
+        $groupMembers = User::where('sub_number', $user->sub_leader)
+            ->select('member_code', 'name')
+            ->get();
+        
+        // 傘下営業所の取引を取得（資格手当の対象となる期間のみ）
+        $groupTradings = [];
+        $currentDate = Carbon::now();
+        $startDate = $currentDate->copy()->subMonths(config('custom.sub_monthsCovered'))->addDay();
+        foreach ($groupMembers as $member) {
+            $tradings = Trading::getTradings($member->member_code, $startDate, $currentDate)
+                ->whereIn('trade_type', config('custom.sales_tradeTypesEigyosho'));
+                
+            $groupTradings[] = $tradings;
+        }
+        
+        return view('member.sub', compact('user', 'groupMembers', 'groupTradings', 'currentDate'));
+    }
+
+    public function show_upload() {
         return view('upload');
     }
 
-    public function admin(Request $request)
+    public function show_admin(Request $request)
     {
         $users = User::where('status', 1)
             ->select('id', 'name', 'member_code', 'sub_leader', 'sub_now')
             ->orderBy('priority', 'ASC')
             ->get();
 
-        $trades = Trading::getTradings();
+        $trades = Trading::getTradings(null, null, null, 'id');
 
         $monthArr = $this->functions->getMonthArr(2);
 

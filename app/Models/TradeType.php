@@ -31,6 +31,25 @@ class TradeType extends Model
     protected $dates = ['created_at'];
 
     /**
+     * 条件で絞り込んだ取引種別を取得するメソッド
+     *
+     * @param string $name config\custom.phpで定義されているキー名
+     * @return \Illuminate\Database\Eloquent\Collection 取引種別一覧
+     */
+    public static function getTradeTypes($name = null)
+    {
+        if (empty($name)) {
+            return self::get();
+        }
+        
+        // 引数 $name を基に config から配列を取得
+        $typesArr = config('custom.' . $name);
+
+        // 配列に含まれるtrade_typeを絞り込んで取得
+        return self::whereIn('trade_type', $typesArr)->get();
+    }
+
+    /**
      * レコードを新規作成または更新するメソッド
      *
      * @param int $value

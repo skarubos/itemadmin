@@ -39,8 +39,8 @@
                     <!-- 取引を編集 -->
                     <form action="/trade/edit" method="GET" enctype="multipart/form-data" class="mb-5">
                         @csrf
-                        <label for="edit_id" class="block pb-1">編集する取引を選択</label>
-                        <select name="edit_id" id="edit_id" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
+                        <label for="id" class="block pb-1">編集する取引を選択</label>
+                        <select name="id" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
                             @foreach($trades as $trade)
                                 <option value="{{ $trade['id'] }}" class="">
                                     {{ $trade['id'] . ' （' . $trade['date'].  '） ' . $trade['trade_type'] . ' : ' . $trade->user->name . ' : ' . $trade['amount'] . 'セット' }}
@@ -53,10 +53,10 @@
                     </form>
 
                     <!-- 削除 -->
-                    <form action="/delete" method="POST" enctype="multipart/form-data" onsubmit="return confirmDelete()" class="mb-5">
+                    <form action="/trade/delete" method="POST" enctype="multipart/form-data" onsubmit="return confirmDelete()" class="mb-5">
                         @csrf
-                        <label for="trade_id" class="block pb-1">削除する取引を選択</label>
-                        <select name="trade_id" id="trade_id" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
+                        <label for="id" class="block pb-1">削除する取引を選択</label>
+                        <select name="id" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
                             @foreach($trades as $trade)
                                 <option value="{{ $trade['id'] }}" class="">
                                 {{ $trade['id'] . ' （' . $trade['date'].  '） ' . $trade['trade_type'] . ' : ' . $trade->user->name . ' : ' . $trade['amount'] . 'セット' }}

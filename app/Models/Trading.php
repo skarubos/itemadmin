@@ -43,7 +43,7 @@ class Trading extends Model
     }
 
     /**
-     * IDから取引を取得するメソッド
+     * IDから取引を1つ取得するメソッド
      *
      * @param string|null $member_code
      * @param int $trade_id 取引ID
@@ -66,7 +66,7 @@ class Trading extends Model
     }
 
     /**
-     * 条件に該当する取引を取得するメソッド
+     * 条件に該当する取引すべてを取得するメソッド
      *
      * @param string|null $member_code
      * @param string|null $startDate 開始日付

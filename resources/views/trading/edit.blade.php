@@ -32,9 +32,9 @@
 
                 <!-- member_code Dropdown -->
                 <div class="mb-4">
-                    <label for="member_code" class="">氏名</label>
+                    <label for="member_code" class="">注文者</label>
                     <select name="member_code" id="member_code" class="block w-full text-xl dark:bg-gray-900 mt-1 py-3 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
-                        <option value="">Select Name</option>
+                        <option value="">名前を選択</option>
                         @foreach($users as $user)
                             <option value="{{ $user->member_code }}" {{ $user->member_code == $trade->member_code ? 'selected' : '' }}>{{ $user->name }}</option>
                         @endforeach

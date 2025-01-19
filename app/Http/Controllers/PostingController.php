@@ -23,45 +23,6 @@ class PostingController extends Controller
     {
         $this->functions = $functionsController;
     }
-
-    public function show_edit_trade_request(Request $request) {
-        // POSTされたIDをURLに含めてリダイレクト
-        $route = '/trade/edit/' . $request->input('edit_id') . '/0';
-        return redirect($route);
-    }
-    public function show_edit_trade($tradeId, $remain)
-    {
-        $trade = Trading::
-            with(['tradeType' => function($query) {
-                $query->select('trade_type', 'name');
-            }])
-            ->with(['user' => function($query) {
-                $query->select('member_code', 'name');
-            }])
-            ->where('id', $tradeId)
-            ->select('id', 'member_code', 'date', 'trade_type', 'amount')
-            ->first();
-        
-        // 取引詳細
-        $details = TradeDetail::with('product')
-            ->where('trade_id', $tradeId)
-            ->get();
-
-        // 新規登録時と形式を合わせるため、各要素にproductのnameを設定
-        $details->each(function ($tradeDetail) {
-            $tradeDetail->name = $tradeDetail->product->name;
-        });
-
-        // ドロップダウンリスト表示に必要なデータを取得
-        $users = User::where('status', 1)
-            ->select('id', 'name', 'member_code')
-            ->orderBy('priority', 'ASC')
-            ->get();
-        $trade_types = TradeType::select('trade_type', 'name', 'caption')
-            ->get();
-
-        return view('trade-edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
-    }
     
     public function upload_check(Request $request)
     {
@@ -87,8 +48,9 @@ class PostingController extends Controller
             $trade_types = TradeType::select('trade_type', 'name', 'caption')
                 ->get();
 
+            $details = [];
             $remain = 0;
-            return view('trade-edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
+            return view('trading.edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
         }
 
         $file = $request->file('file')->getRealPath();
@@ -177,7 +139,7 @@ class PostingController extends Controller
         }
 
         $remain = 0;
-        return view('trade-edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
+        return view('trading.edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
     }
 
     public function save_trade(Request $request)
@@ -241,101 +203,4 @@ class PostingController extends Controller
         }
     }
 
-
-    public function delete(Request $request)
-    {
-        $request->validate([
-            'trade_id' => 'required|integer',
-        ]);
-
-        // 取引IDから取引内容を取得
-        $tradeId = $request->input('trade_id');
-        $trading = Trading::find($tradeId);
-        if (!$trading) {
-            return back()->withErrors(['error' => '指定された取引はデータベースに存在しません。']);
-        } else {
-            $tradeType = $trading->trade_type;
-            $memberCode = $trading->member_code;
-            $amount = $trading->amount;
-            $details = TradeDetail::where('trade_id', $tradeId)->get();
-        }
-
-        DB::beginTransaction();
-        try {
-            // 外部キー制約無効化のためusersテーブルの関連レコードを更新
-            User::where('latest_trade', $tradeId)->update(['latest_trade' => null]);
-
-            // trade_detailsの該当カラムを削除
-            TradeDetail::where('trade_id', $tradeId)->delete();
-
-            // tradingsの該当カラムを削除
-            $trading->delete();
-
-            // 注文の時の処理
-            if (in_array($tradeType, config('custom.sales_tradeTypes'))) {
-                // 最新注文&年間実績&資格手当を更新
-                $this->functions->refresh($memberCode);
-            }
-
-            // 預入れor預出しの時の処理
-            if (in_array($tradeType, config('custom.depo_tradeTypes'))) {
-                // 現在合計預けセット数＆DepoRealtimeテーブルを更新
-                $this->functions->saveDepoForMember($memberCode, $tradeType, $amount, $details, -1);
-            }
-
-            DB::commit();
-
-            return redirect()->route('admin')->with('success', '取引をデータベースから正常に削除しました');
-        } catch (\Exception $e) {
-            // トランザクションロールバック
-            DB::rollBack();
-            \Log::error('Data update(delete) failed: ' . $e->getMessage());
-            return back()->withErrors(['error' => '取引の削除中にエラーが発生しました: ' . $e->getMessage()]);
-        }
-    }
-
-    public function save_product_check(Request $request) {
-        $productTypes = $request->input('product_type');
-        $id = $request->input('id');
-        $name = $request->input('name');
-
-        DB::beginTransaction();
-        try {
-            foreach ($productTypes as $i => $type) {
-                if (!$type) {
-                    throw new Exception("全ての商品種別を選択してください。");
-                }
-                // productsテーブルから未使用の最小種別idを取得
-                $maxId = Product::where('id', '>', $type * 100)
-                    ->where('id', '<=', $type * 100 + 99)
-                    ->max('id');
-                
-                // 新しい商品ID
-                $newId = $maxId + 1;
-
-                // 新しいProductレコードを作成
-                $product = new Product;
-                $product->id = $newId;
-                $product->name = $name[$i];
-                $product->product_type = $type;
-                $product->save();
-
-                // 関連するテーブルのproduct_idを更新
-                TradeDetail::where('product_id', $id[$i])->update(['product_id' => $newId]);
-                DepoRealtime::where('product_id', $id[$i])->update(['product_id' => $newId]);
-
-                // 古いProductレコードを削除
-                Product::find($id[$i])->delete();
-            }
-
-            DB::commit();
-
-            return redirect()->route('sales')->with('success', '新規商品の商品種別を登録しました。');
-        } catch (\Exception $e) {
-            // トランザクションロールバック
-            DB::rollBack();
-            \Log::error('商品種別の登録に失敗しました。: ' . $e->getMessage());
-            return back()->withErrors(['error' => $e->getMessage()]);
-        }
-    }
 }

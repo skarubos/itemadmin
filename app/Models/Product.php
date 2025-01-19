@@ -11,11 +11,6 @@ class Product extends Model
     
     public $timestamps = false;
 
-    /**
-     * テーブル名を指定
-     *
-     * @var string
-     */
     protected $table = 'products';
 
     public function depoRealtimes()
@@ -27,30 +22,31 @@ class Product extends Model
         return $this->hasMany(TradeDetail::class, 'product_id');
     }
 
-    /**
-     * 主キーのカラム名
-     *
-     * @var string
-     */
     protected $primaryKey = 'id';
 
-    /**
-     * 複数代入可能な属性
-     *
-     * @var array
-     */
     protected $fillable = [
         'name',
         'product_type'
     ];
 
-    /**
-     * 日付属性のキャスト
-     *
-     * @var array
-     */
     protected $dates = [
         'created_at',
         'updated_at'
     ];
+
+    /**
+     * 商品種別を指定して、未使用の最小IDを取得するメソッド
+     *
+     * @param int $type 商品種別
+     * @return int 新規商品のID（未使用の最小ID）
+     */
+    public static function getNewId($type)
+    {
+        // productsテーブルから使用中の最大IDを取得
+        $maxId = self::where('id', '>', $type * 100)
+            ->where('id', '<=', $type * 100 + 99)
+            ->max('id');
+
+        return $maxId + 1;
+    }
 }

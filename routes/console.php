@@ -17,7 +17,6 @@ Schedule::call(function () {
         $functions = new FunctionsController();
         $month = $functions->getMonthArr(0);
         // サービスコンテナを使用してScrapingControllerを解決する
-        // scrape()メソッド内でFunctionsControllerのメソッドが呼び出されるため
         $controller = app(ScrapingController::class);
         $howMany = $controller->scrape($month, $cookie, false);
         DB::commit();

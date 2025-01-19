@@ -23,7 +23,13 @@ class TradingController extends Controller
 
     public function show_trade_check() {
         // 自動登録された取引を取得
-        $newTrade = Trading::getTradings(null, null, null, 'date', 'ASC', 2);
+        $params = [
+            'sortColumn' => 'date',
+            'sortDirection' => 'ASC',
+            'status' => 2,
+        ];
+        $tradings = Trading::getTradings($params);
+
         return view('trading.check', compact('newTrade'));
     }
 

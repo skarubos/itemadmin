@@ -36,7 +36,9 @@ class TradeDetail extends Model
      */
     public static function getTradeDetail($trade_id)
     {
-        $details = self::with('product')
+        $details = self::with(['product' => function($query) {
+                $query->select('id', 'name');
+            }])
             ->where('trade_id', $trade_id)
             ->get();
         return $details;

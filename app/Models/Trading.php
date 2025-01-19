@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class Trading extends Model
 {
@@ -66,44 +67,62 @@ class Trading extends Model
     }
 
     /**
-     * 条件に該当する取引すべてを取得するメソッド
+     * 該当する取引すべてを取得するメソッド
      *
-     * @param string|null $member_code
-     * @param string|null $startDate 開始日付
-     * @param string|null $endDate 終了日付
-     * @param string|null $sortColumn 並べ替え列
-     * @param string $sortDirection 並べ替え方向 (ASC または DESC)
-     * @param int $status statusカラム値
-     * @return Collection 取得した取引のコレクション
+     * @param array $params パラメータの配列
+     * @return \Illuminate\Database\Eloquent\Collection 取得した取引のコレクション
      */
-    public static function getTradings($member_code = null, $startDate = null, $endDate = null, $sortColumn = 'date', $sortDirection = 'DESC', $status = null)
+    public static function getTradings(array $params = [])
     {
+        // デフォルトのパラメータを設定
+        $currentDate = Carbon::now();
+        $defaults = [
+            'member_code' => null,
+            'startDate' => null,
+            'endDate' => $currentDate,
+            'tradeTypes' => null,
+            'sortColumn' => 'date',
+            'sortDirection' => 'DESC',
+            'status' => null,
+        ];
+
+        // デフォルト値と渡された値をマージ
+        $params = array_merge($defaults, $params);
+
+        // クエリの構築
         $query = self::with('tradeType')
             ->with(['user' => function($query) {
                 $query->select('member_code', 'name');
             }])
             ->select('id', 'member_code', 'date', 'trade_type', 'amount');
 
+        // メンバーコードで絞り込み
+        if ($params['member_code']) {
+            $query->where('member_code', $params['member_code']);
+        }
+
         // 期間で絞り込み
-        if ($startDate && $endDate) {
-            $query->whereBetween('date', [$startDate, $endDate]);
+        if ($params['startDate']) {
+            $query->whereBetween('date', [$params['startDate'], $params['endDate']]);
         }
         
-        // メンバーコードで絞り込み
-        if ($member_code) {
-            $query->where('member_code', $member_code);
+        // 取引種別で絞り込み
+        if ($params['tradeTypes']) {
+            $key = 'custom.' . $params['tradeTypes'];
+            $query->whereIn('trade_type', config($key));
         }
 
         // statusで絞り込み
-        if ($status) {
-            $query->where('status', $status);
+        if ($params['status']) {
+            $query->where('status', $params['status']);
         }
 
         // 並べ替え
-        $query->orderBy($sortColumn, $sortDirection);
+        $query->orderBy($params['sortColumn'], $params['sortDirection']);
 
         return $query->get();
     }
+
 
     /**
      * 最新の取引1件を取得するメソッド

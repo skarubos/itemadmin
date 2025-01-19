@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Requests\IdRequest;
+use App\Http\Traits\HandlesTransactions;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Product;
 use App\Models\DepoRealtime;
@@ -13,118 +13,19 @@ use App\Models\Trading;
 use App\Models\TradeDetail;
 use App\Models\TradeType;
 use App\Models\RefreshLog;
-use App\Http\Controllers\MyService;
 use App\Http\Controllers\FunctionsController;
 use Carbon\Carbon;
-use Exception;
 
 class HomeController extends Controller
 {
+    use HandlesTransactions;
+
     // FunctionsControllerのメソッドを$this->functionsで呼び出せるようにする
     private $functionsController;
     public function __construct(FunctionsController $functionsController)
     {
         $this->functions = $functionsController;
     }
-
-
-
-
-    public function show_member_depo_history($member_code) {
-        $user = User::where('member_code', $member_code)
-            ->select('member_code', 'name', 'depo_status')
-            ->first();
-    
-        $tradings = Trading::where('member_code', $member_code)
-            ->whereIn('trade_type', config('custom.depo_tradeTypes'))
-            ->select('id', 'date', 'trade_type', 'amount')
-            ->orderBy('date', 'ASC')
-            ->get();
-            
-        $allProducts = Product::orderBy('id', 'ASC')->get(['id', 'name']);
-        
-        // 各商品の総数量を記録する配列
-        $totalQuantities = array_fill(0, $allProducts->count(), 0);
-        
-        // 各取引ごとのデータ取得と数量の配列作成
-        foreach ($tradings as $trading) {
-            $details = TradeDetail::with(['product' => function($query) {
-                    $query->select('id', 'name'); // productsテーブルからidとnameのみを取得（リレーションを利用）
-                }])
-                ->where('trade_id', $trading->id)
-                ->select('trade_id', 'product_id', 'amount')
-                ->orderBy('product_id', 'ASC')
-                ->get();
-        
-            $transactionAmounts = array_fill(0, $allProducts->count(), 0); // 初期化
-            foreach ($details as $detail) {
-                $productIndex = $allProducts->search(function ($product) use ($detail) {
-                    return $product->id === $detail->product_id;
-                });
-        
-                if ($productIndex !== false) {
-                    $transactionAmounts[$productIndex] = $detail->amount;
-                    $totalQuantities[$productIndex] += $detail->amount;
-                }
-            }
-            $amounts[] = $transactionAmounts;
-        }
-
-        // 現在の預け入れ在庫depo_realtimeも加える
-        $realtime_details = DepoRealtime::with(['product' => function($query) {
-            $query->select('id', 'name');
-        }])
-        ->where('member_code', $member_code)
-        ->where('amount', '!=', 0)
-        ->select('product_id', 'amount')
-        ->orderBy('product_id', 'ASC')
-        ->get();
-        $transactionAmounts = array_fill(0, $allProducts->count(), 0); // 初期化
-        foreach ($realtime_details as $detail) {
-            $productIndex = $allProducts->search(function ($product) use ($detail) {
-                return $product->id === $detail->product_id;
-            });
-    
-            if ($productIndex !== false) {
-                $transactionAmounts[$productIndex] = $detail->amount;
-                $totalQuantities[$productIndex] += $detail->amount;
-            }
-        }
-        $amounts[] = $transactionAmounts;
-      
-        // $totalQuantitiesを使って、すべての取引で数量が0の商品のインデックスを特定
-        $products = [];
-        $amountsSelected = [];
-        foreach ($totalQuantities as $index => $quantity) {
-            if ($quantity > 0) {
-                $products[] = $allProducts[$index]->name;
-        
-                foreach ($amounts as $transactionAmounts) {
-                    $amountsSelected[$index][] = $transactionAmounts[$index];
-                }
-            }
-        }
-
-        return view('member.depo-history', compact('user', 'tradings', 'products', 'amountsSelected'));
-    }
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     public function dashboard()
@@ -203,7 +104,12 @@ class HomeController extends Controller
         $endDate = Carbon::now()->endOfYear();
     
         // 取引を取得
-        $tradings = Trading::getTradings($member_code, $startDate, $endDate);
+        $params = [
+            'member_code' => $member_code,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+        ];
+        $tradings = Trading::getTradings($params);
     
         // 年ごとに取引記録をグループ化
         $groupedTradings = $tradings->groupBy(function($date) {
@@ -228,6 +134,74 @@ class HomeController extends Controller
         $data = $this->functions->getMemberDepo($member_code);
         return view('member.depo', compact('data'));
     }
+
+    public function show_member_depo_history($member_code) {
+        $user = User::where('member_code', $member_code)
+            ->select('member_code', 'name', 'depo_status')
+            ->first();
+    
+        // 預け関連の取引を取得
+        $params = [
+            'member_code' => $member_code,
+            'tradeTypes' => 'depo_tradeTypes',
+            'sortColumn' => 'date',
+            'sortDirection' => 'ASC',
+        ];
+        $tradings = Trading::getTradings($params);
+            
+        $allProducts = Product::get(['id', 'name']);
+        
+        // 各商品の総数量を記録する配列
+        $totalQuantities = array_fill(0, $allProducts->count(), 0);
+        
+        // 各取引ごとのデータ取得と数量の配列作成
+        foreach ($tradings as $trading) {
+            // 取引詳細を取得
+            $details = TradeDetail::getTradeDetail($trading->id);
+        
+            $transactionAmounts = array_fill(0, $allProducts->count(), 0); // 初期化
+            foreach ($details as $detail) {
+                $productIndex = $allProducts->search(function ($product) use ($detail) {
+                    return $product->id === $detail->product_id;
+                });
+                if ($productIndex !== false) {
+                    $transactionAmounts[$productIndex] = $detail->amount;
+                    $totalQuantities[$productIndex] += $detail->amount;
+                }
+            }
+            $amounts[] = $transactionAmounts;
+        }
+
+        // 現在の預け入れ詳細も取得
+        $realtime_details = DepoRealtime::getDepoRealtime($member_code);
+
+        $transactionAmounts = array_fill(0, $allProducts->count(), 0); // 初期化
+        foreach ($realtime_details as $detail) {
+            $productIndex = $allProducts->search(function ($product) use ($detail) {
+                return $product->id === $detail->product_id;
+            });
+            if ($productIndex !== false) {
+                $transactionAmounts[$productIndex] = $detail->amount;
+                $totalQuantities[$productIndex] += $detail->amount;
+            }
+        }
+        $amounts[] = $transactionAmounts;
+      
+        // $totalQuantitiesを使って、すべての取引で数量が0の商品のインデックスを特定
+        $products = [];
+        $amountsSelected = [];
+        foreach ($totalQuantities as $index => $quantity) {
+            if ($quantity > 0) {
+                $products[] = $allProducts[$index]->name;
+        
+                foreach ($amounts as $transactionAmounts) {
+                    $amountsSelected[$index][] = $transactionAmounts[$index];
+                }
+            }
+        }
+
+        return view('member.depo-history', compact('user', 'tradings', 'products', 'amountsSelected'));
+    }
     
     public function show_member_sub($member_code){
         $user = User::where('member_code', $member_code)
@@ -243,7 +217,13 @@ class HomeController extends Controller
         $currentDate = Carbon::now();
         $startDate = $currentDate->copy()->subMonths(config('custom.sub_monthsCovered'))->addDay();
         foreach ($groupMembers as $member) {
-            $tradings = Trading::getTradings($member->member_code, $startDate, $currentDate)
+            // 取引を取得
+            $params = [
+                'member_code' => $member->member_code,
+                'startDate' => $startDate,
+                'endDate' => $currentDate,
+            ];
+            $tradings = Trading::getTradings($params)
                 ->whereIn('trade_type', config('custom.sales_tradeTypesEigyosho'));
                 
             $groupTradings[] = $tradings;
@@ -263,7 +243,9 @@ class HomeController extends Controller
             ->orderBy('priority', 'ASC')
             ->get();
 
-        $trades = Trading::getTradings(null, null, null, 'id');
+        // 取引を取得
+        $params = ['sortColumn' => 'id'];
+        $tradings = Trading::getTradings($params);
 
         $monthArr = $this->functions->getMonthArr(2);
 
@@ -271,7 +253,7 @@ class HomeController extends Controller
         $methods = ['scrape', 'refresh_sub', 'refresh'];
         $refreshLogs = RefreshLog::getLastUpdate($methods);
 
-        return view('admin', compact('users', 'trades', 'monthArr', 'refreshLogs'));
+        return view('admin', compact('users', 'tradings', 'monthArr', 'refreshLogs'));
     }
 
     public function show_setting() {
@@ -306,50 +288,44 @@ class HomeController extends Controller
 
     public function refresh_member(Request $request) {
         $member_code = $request->input('member_code');
-        DB::beginTransaction();
-        try {
+        $callback = function () use ($member_code) {
             $this->functions->refresh($member_code);
-            DB::commit();
-            return redirect()->route('sales')
-                ->with('success', $member_code . ':データの更新が正常に行われました。【最新注文&年間実績&資格手当】');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('全部更新(refresh_all)に失敗: ' . $e->getMessage());
-            return back()->withErrors(['error' => 'データの更新処理に失敗しました。', 'エラーログ保存先：\storage\logs\laravel.log']);
-        }
+        };
+        return $this->handleTransaction(
+            $callback,
+            'sales', // 成功時のリダイレクトルート
+            $member_code . ':データの更新が正常に行われました。【最新注文&年間実績&資格手当】', // 成功メッセージ
+            'データの更新処理に失敗しました。' // エラーメッセージ
+        );
     }
 
     public function refresh_all() {
         $users = User::where('status', 1)->get();
-        DB::beginTransaction();
-        try {
+        $callback = function () use ($users) {
             $this->functions->refresh($users);
-            DB::commit();
-            return redirect()->route('sales')
-                ->with('success', 'データの更新が正常に行われました。【最新注文&年間実績&資格手当】');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('全部更新(refresh_all)に失敗: ' . $e->getMessage());
-            return back()->withErrors(['error' => 'データの更新処理に失敗しました。', 'エラーログ保存先：\storage\logs\laravel.log']);
-        }
+        };
+        return $this->handleTransaction(
+            $callback,
+            'sales', // 成功時のリダイレクトルート
+            'データの更新が正常に行われました。【最新注文&年間実績&資格手当】', // 成功メッセージ
+            'データの更新処理に失敗しました。' // エラーメッセージ
+        );
     }
 
     public function reset_all() {
-        DB::beginTransaction();
-        try {
+        $callback = function () {
             User::where('status', 1)
                 ->update([
                     'sales' => 0,
                     'latest_trade' => null,
                     'sub_now' => 0,
                 ]);
-            DB::commit();
-            return redirect()->route('sales')
-                ->with('success', '最新注文&年間実績&資格手当をリセットしました。');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('更新のリセット(reset_all)に失敗: ' . $e->getMessage());
-            return back()->withErrors(['error' => '更新のリセット(reset_all)に失敗しました。', 'エラーログ保存先：\storage\logs\laravel.log']);
-        }
+        };
+        return $this->handleTransaction(
+            $callback,
+            'sales', // 成功時のリダイレクトルート
+            '最新注文&年間実績&資格手当をリセットしました。', // 成功メッセージ
+            'リセット(reset_all)に失敗しました。' // エラーメッセージ
+        );
     }
 }

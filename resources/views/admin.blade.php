@@ -41,7 +41,7 @@
                         @csrf
                         <label for="id" class="block pb-1">編集する取引を選択</label>
                         <select name="id" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
-                            @foreach($trades as $trade)
+                            @foreach($tradings as $trade)
                                 <option value="{{ $trade['id'] }}" class="">
                                     {{ $trade['id'] . ' （' . $trade['date'].  '） ' . $trade['trade_type'] . ' : ' . $trade->user->name . ' : ' . $trade['amount'] . 'セット' }}
                                 </option>
@@ -57,7 +57,7 @@
                         @csrf
                         <label for="id" class="block pb-1">削除する取引を選択</label>
                         <select name="id" class="w-full lg:w-1/2 text-lg dark:bg-gray-900 py-2 px-4 shadow-sm border-gray-300 dark:border-gray-600 rounded-md">
-                            @foreach($trades as $trade)
+                            @foreach($tradings as $trade)
                                 <option value="{{ $trade['id'] }}" class="">
                                 {{ $trade['id'] . ' （' . $trade['date'].  '） ' . $trade['trade_type'] . ' : ' . $trade->user->name . ' : ' . $trade['amount'] . 'セット' }}
                                 </option>

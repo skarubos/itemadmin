@@ -51,7 +51,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/tradeType/delete', [TradeTypeController::class, 'delete'])->name('tradeType.delete');
         Route::get('/product/create', [ProductController::class, 'show_create'])->name('product.create');
         Route::get('/product/edit', [ProductController::class, 'show_edit'])->name('product.edit');
-        Route::post('/product/edit', [ProductController::class, 'show_update']);
+        Route::post('/product/edit', [ProductController::class, 'update']);
         Route::post('/product/delete', [ProductController::class, 'delete'])->name('product.delete');
         Route::get('/product/check', [ProductController::class, 'show_product_check'])->name('product.check');
         Route::get('/user/create', [ProductController::class, 'show_create'])->name('user.create');

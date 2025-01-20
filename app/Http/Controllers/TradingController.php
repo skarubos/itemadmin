@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Http\Requests\IdRequest;
+use App\Http\Traits\HandlesTransactions;
 use App\Models\User;
 use App\Models\Trading;
 use App\Models\TradeDetail;
@@ -14,6 +15,8 @@ use Carbon\Carbon;
 
 class TradingController extends Controller
 {
+    use HandlesTransactions;
+
     // FunctionsControllerのメソッドを$this->functionsで呼び出せるようにする
     private $functionsController;
     public function __construct(FunctionsController $functionsController)
@@ -109,43 +112,36 @@ class TradingController extends Controller
         if (!$trading) {
             return back()->withErrors(['error' => '指定された取引(ID:'.$tradeId.')はデータベースに存在しません。']);
         } else {
-            $tradeType = $trading->trade_type;
-            $memberCode = $trading->member_code;
-            $amount = $trading->amount;
             $details = TradeDetail::getTradeDetail($tradeId);
         }
 
-        DB::beginTransaction();
-        try {
+        $callback = function () use ($trading, $details) {
             // 外部キー制約無効化のためusersテーブルの関連レコードを更新
-            User::where('latest_trade', $tradeId)->update(['latest_trade' => null]);
+            User::where('latest_trade', $trading->id)->update(['latest_trade' => null]);
 
             // trade_detailsの該当カラムを削除
-            TradeDetail::where('trade_id', $tradeId)->delete();
+            TradeDetail::where('trade_id', $trading->id)->delete();
 
             // tradingsの該当カラムを削除
             $trading->delete();
 
             // 注文の時の処理
-            if (in_array($tradeType, config('custom.sales_tradeTypes'))) {
+            if (in_array($trading->trade_type, config('custom.sales_tradeTypes'))) {
                 // 最新注文&年間実績&資格手当を更新
-                $this->functions->refresh($memberCode);
+                $this->functions->refresh($trading->member_code);
             }
 
             // 預入れor預出しの時の処理
-            if (in_array($tradeType, config('custom.depo_tradeTypes'))) {
+            if (in_array($trading->trade_type, config('custom.depo_tradeTypes'))) {
                 // 現在合計預けセット数＆DepoRealtimeテーブルを更新
-                $this->functions->saveDepoForMember($memberCode, $tradeType, $amount, $details, -1);
+                $this->functions->saveDepoForMember($trading->member_code, $trading->trade_type, $trading->amount, $details, -1);
             }
-
-            DB::commit();
-
-            return redirect()->route('admin')->with('success', '取引をデータベースから正常に削除しました');
-        } catch (\Exception $e) {
-            // トランザクションロールバック
-            DB::rollBack();
-            \Log::error('Data update(delete) failed: ' . $e->getMessage());
-            return back()->withErrors(['error' => '取引の削除中にエラーが発生しました: ' . $e->getMessage()]);
-        }
+        };
+        return $this->handleTransaction(
+            $callback,
+            'admin', // 成功時のリダイレクトルート
+            '取引をデータベースから正常に削除しました', // 成功メッセージ
+            '取引の削除中にエラーが発生しました。: ' // エラーメッセージ
+        );
     }
 }

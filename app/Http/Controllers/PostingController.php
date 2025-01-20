@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Http\Traits\HandlesTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -17,6 +18,8 @@ use Exception;
 
 class PostingController extends Controller
 {
+    use HandlesTransactions;
+
     // FunctionsControllerのメソッドを$this->functionsで呼び出せるようにする
     private $functionsController;
     public function __construct(FunctionsController $functionsController)

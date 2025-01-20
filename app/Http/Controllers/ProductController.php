@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use App\Http\Traits\HandlesTransactions;
 use App\Http\Requests\IdRequest;
 use App\Http\Requests\ProductRequest;
 use App\Models\User;
@@ -14,6 +15,8 @@ use App\Models\TradeDetail;
 
 class ProductController extends Controller
 {
+    use HandlesTransactions;
+
     public function show_create()
     {
         return back()->withErrors(['error' => '商品の新規作成は現在できません。']);
@@ -41,16 +44,16 @@ class ProductController extends Controller
         return view('product.check', compact('types', 'newProducts'));
     }
 
-    public function update(ProductRequest $request) {
+    public function update(ProductRequest $request)
+    {
         $validated = $request->validated();
-        $productType = $validated['product_type'];
         $id = $validated['id'];
         $name = $validated['name'];
+        $productType = $validated['product_type'];
         $remain = $validated['remain'] ?? null;
 
-        DB::beginTransaction();
-        try {
-            // productsテーブルから未使用の最小idを取得
+        $callback = function () use ($id, $name, $productType) {
+           // productsテーブルから未使用の最小idを取得
             $newId = Product::getNewId($productType);
 
             // 新しいProductレコードを作成
@@ -66,63 +69,62 @@ class ProductController extends Controller
 
             // 古いProductレコードを削除
             Product::find($id)->delete();
+        };
 
-            DB::commit();
-
-            // 残り件数に応じてリダイレクト先を設定
-            return $this->handleRedirect($name, $remain);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('商品種別の更新に失敗しました。: ' . $e->getMessage());
-            return back()->withErrors(['error' => $e->getMessage()]);
-        }
+        $params = $this->getRedirectParams($name, $remain);
+        
+        return $this->handleTransaction(
+            $callback,
+            $params['route'], // 成功時のリダイレクトルート
+            $params['success'], // 成功メッセージ
+            $params['failure'] // エラーメッセージ
+        );
     }
     /**
-     * リダイレクト処理を行う
+     * リダイレクト先とエラメッセージを設定するメソッド
      *
      * @param string $name エラー表示名
      * @param int|null $remain 残り件数
-     * @return \Illuminate\Http\RedirectResponse
+     * @return array 
      */
-    private function handleRedirect($name, $remain)
+    private function getRedirectParams($name, $remain)
     {
         if (is_null($remain)) {
-            return redirect()->route('setting')
-                ->with('success', '商品【'.$name.'】の商品種別を更新しました。');
+            $params = [
+                'route' => 'setting',
+                'success' => '商品【'.$name.'】の商品種別を更新しました。',
+            ];                
         } elseif ($remain > 1) {
             $remain--;
-            return redirect()->route('product.check')
-                ->with('success', '新規商品【'.$name.'】の商品種別を更新！残り'.$remain.'件');
+            $params = [
+                'route' => 'product.check',
+                'success' => '新規商品【'.$name.'】の商品種別を更新！残り'.$remain.'件',
+            ];  
         } elseif ($remain == 1) {
-            return redirect()->route('sales')
-                ->with('success', '新規商品【'.$name.'】の商品種別を更新！');
+            $params = [
+                'route' => 'sales',
+                'success' => '新規商品【'.$name.'】の商品種別を更新！',
+            ];  
         } else {
-            return redirect()->route('sales')
-                ->with('success', '新規商品【'.$name.'】の確認完了！残り件数(remain)の値が不正です。');
+            $params = [
+                'route' => 'sales',
+                'success' => '新規商品【'.$name.'】の確認完了！残り件数(remain)の値が不正です。',
+            ];  
         }
+        $params['failure'] = '商品種別の更新に失敗しました。';
+        return $params;
     }
 
     public function delete(IdRequest $request)
     {
-        DB::beginTransaction();
-        try {
+        $callback = function () use ($request) {
             $result = Product::find($request->validated()['id'])->delete();
-
-            DB::commit();
-            return redirect()
-                ->route('setting')
-                ->with('success', '商品を削除しました。');
-
-        } catch (QueryException $e) {
-            DB::rollBack();
-            // 外部キー制約違反の場合のエラーメッセージ
-            if ($e->errorInfo[1] == 1451) {
-                return back()->withErrors(['error' => 'この商品は既に登録されている取引が存在するため削除できません。']);
-            }
-            // その他のエラー
-            \Log::error('商品の削除に失敗: ' . $e->getMessage());
-            return back()->withErrors(['error' => '商品の削除に失敗しました。: ' . $e->getMessage()]);
-        }
+        };
+        return $this->handleTransaction(
+            $callback,
+            'setting', // 成功時のリダイレクトルート
+            '商品を削除しました。', // 成功メッセージ
+            '商品の削除に失敗しました。' // エラーメッセージ
+        );
     }
 }

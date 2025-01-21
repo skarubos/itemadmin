@@ -69,7 +69,7 @@ Schedule::call(function () {
     DB::beginTransaction();
     try {
         $controller = new FunctionsController();
-        $controller->refresh($users);
+        $controller->refreshAll($users);
         DB::commit();
         RefreshLog::create([
             'method' => 'refresh',

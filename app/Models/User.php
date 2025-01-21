@@ -65,4 +65,12 @@ class User extends Authenticatable
         return $this->permission == 1;
     }
 
+    public static function getForDropdownList()
+    {
+        $users = User::where('status', 1)
+            ->select('id', 'name', 'member_code')
+            ->orderBy('priority', 'ASC')
+            ->get();
+        return $users;
+    }
 }

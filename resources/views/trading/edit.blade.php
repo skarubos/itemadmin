@@ -3,7 +3,7 @@
 <div class="py-6">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="text-xl bg-white dark:bg-gray-800 font-medium text-gray-900 dark:text-gray-100 overflow-hidden px-4 py-8 shadow-sm sm:rounded-lg">
-            <form action="/trade/save" method="POST" enctype="multipart/form-data">
+            <form action="/trade/edit" method="POST" enctype="multipart/form-data">
             <div class="sm:flex">
                 @csrf
                 <!-- 取引ID（非表示） -->

@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use PhpOffice\PhpSpreadsheet\IOFactory;
+
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use App\Http\Requests\IdRequest;
 use App\Http\Traits\HandlesTransactions;
@@ -10,6 +13,8 @@ use App\Models\User;
 use App\Models\Trading;
 use App\Models\TradeDetail;
 use App\Models\TradeType;
+use App\Models\Product;
+use App\Models\DepoRealtime;
 use App\Http\Controllers\FunctionsController;
 use Carbon\Carbon;
 
@@ -24,14 +29,14 @@ class TradingController extends Controller
         $this->functions = $functionsController;
     }
 
-    public function show_trade_check() {
+    public function show_check() {
         // 自動登録された取引を取得
         $params = [
             'sortColumn' => 'date',
             'sortDirection' => 'ASC',
             'status' => 2,
         ];
-        $tradings = Trading::getTradings($params);
+        $newTrade = Trading::getTradings($params);
 
         return view('trading.check', compact('newTrade'));
     }
@@ -73,7 +78,7 @@ class TradingController extends Controller
         }
     }
 
-    public function show_edit_trade_request(IdRequest $request) {
+    public function show_edit_request(IdRequest $request) {
         // POSTされたIDをURLに含めてリダイレクト
         $route = '/trade/edit/' . $request->input('id') . '/0';
         return redirect($route);
@@ -84,7 +89,7 @@ class TradingController extends Controller
      * @param int $tradeId 取引ID
      * @param int $remain 0:通常の編集、1~:自動登録取引の確認時の残り件数
      */
-    public function show_edit_trade($tradeId, $remain)
+    public function show_edit($tradeId, $remain)
     {
         $trade = Trading::getTrade($tradeId);
         $details = TradeDetail::getTradeDetail($tradeId);
@@ -95,12 +100,115 @@ class TradingController extends Controller
         });
 
         // ドロップダウンリスト表示に必要なデータを取得
-        $users = User::where('status', 1)
-            ->select('id', 'name', 'member_code')
-            ->orderBy('priority', 'ASC')
-            ->get();
+        $users = User::getForDropdownList();
+        // 自動登録取引の確認時は選択できる取引種別を制限
         $trade_types = $remain ? TradeType::getTradeTypes('tradeTypes_for_checkTrade') : TradeType::getTradeTypes();
         
+        return view('trading.edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
+    }
+
+    public function show_create_idou()
+    {
+        // 取引データを格納するインスタンス
+        $trade = new Trading;
+        $trade->trade_type = 20;
+
+        // ドロップダウンリスト表示に必要なデータを取得
+        $users = User::getForDropdownList();
+        $trade_types = TradeType::getTradeTypes();
+
+        $details = [];
+        $remain = 0;
+        return view('trading.edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
+    }
+
+    public function upload_check(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'file' => 'nullable|mimes:xlsx,xls',
+        ]);
+        if ($validator->fails()) {
+            return back()->withErrors(['error' => 'アップロード可能なファイル形式（.xlsx .xls）ではありません。'])->withInput();
+        };
+
+        // 取引データを格納するインスタンス
+        $trade = new Trading;
+
+        // Excelを解析
+        $file = $request->file('file')->getRealPath();
+        $spreadsheet = IOFactory::load($file);
+        $sheetData = $spreadsheet->getActiveSheet()->toArray();
+
+        // 詳細行（商品別セット数の一覧が記載されている行）の開始行と終了行
+        $startRow = null;
+        $endRow = null;
+        $col123;    // 取引種別[1:出荷 2:預入れ 3:預出し]をセット数が入力されている列数で判定して格納
+
+        // 取引データを取得（１列目の文字列で項目を判定）
+        foreach ($sheetData as $index => $row) {
+            switch ($row[0]) {
+                case '売上計上日':
+                    if (preg_match('/(\d+)月(\d+)日/', $row[1], $matches)) {
+                        // Carbonオブジェクトを使ってY-m-d形式に変換
+                        $date = Carbon::createFromDate(Carbon::now()->year, $matches[1], $matches[2])->format('Y-m-d');
+                        $trade->date = $date;
+                    }
+                    break;
+                case '氏名':
+                    $trade->name = $row[1];
+                    $user = User::where('name', $trade->name)
+                        ->select('member_code')
+                        ->first();
+                    if ($user) {
+                        $trade->member_code = $user->member_code;
+                    }
+                    break;
+                case '商品':
+                    $startRow = $index + 1;
+                    break;
+                case '商品合計セット数':
+                    $endRow = $index;
+                    foreach ([1, 2, 3] as $i) {
+                        if (!($row[$i] == 0)) {
+                            $trade->amount = $row[$i];
+                            // ここで取引種別を取得
+                            $types = ['sales', 'in', 'out'];
+                            $type = $types[$i - 1];
+                            $col123 = $i;
+                            break;
+                        }
+                    }
+                    break;
+            }
+        }
+
+        // 商品別セット数の一覧を取引詳細を格納する配列$details[]に取得
+        $details = [];
+        if ($startRow !== null && $endRow !== null) {
+            for ($i = $startRow; $i < $endRow; $i++) {
+                // 商品名から商品IDを取得
+                $productId = Product::getProductId($sheetData[$i][0]);
+
+                // Detailインスタンスを配列に格納
+                $detail = new TradeDetail;
+                $detail->product_id = $productId;
+                $detail->name = $sheetData[$i][0];
+                $detail->amount = $sheetData[$i][$col123];
+
+                $details[] = $detail;
+            }
+        } else {
+            return back()->withErrors(['error' => '取引詳細が記入された行を見つけられません。'])->withInput();
+        }
+
+        // ドロップダウンリスト表示に必要なデータを取得
+        $users = User::getForDropdownList();
+        $trade_types = TradeType::getTradeTypes();
+
+        // 取引タイプを判明する範囲で場合分け
+        $trade->trade_type = $this->functions->getTradeType($trade->member_code, $type);
+
+        $remain = 0;
         return view('trading.edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
     }
 

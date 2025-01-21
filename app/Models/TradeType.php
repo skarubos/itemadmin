@@ -39,14 +39,16 @@ class TradeType extends Model
     public static function getTradeTypes($name = null)
     {
         if (empty($name)) {
-            return self::get();
+            return self::select('trade_type', 'name', 'caption')->get();
         }
         
         // 引数 $name を基に config から配列を取得
         $typesArr = config('custom.' . $name);
 
         // 配列に含まれるtrade_typeを絞り込んで取得
-        return self::whereIn('trade_type', $typesArr)->get();
+        return self::whereIn('trade_type', $typesArr)
+            ->select('trade_type', 'name', 'caption')
+            ->get();
     }
 
     /**
@@ -76,15 +78,5 @@ class TradeType extends Model
     public static function tradeTypeExists($value)
     {
         return self::where('trade_type', $value)->exists();
-    }
-
-    /**
-     * レコードを削除するメソッド
-     *
-     * @param int $id
-     */
-    public static function deleteById($id)
-    {
-        self::find($id)->delete();
     }
 }

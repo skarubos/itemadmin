@@ -18,46 +18,46 @@ use Exception;
 class FunctionsController extends Controller
 {
     /**
-     * 年間実績&最新注文&資格手当を更新
-     *（特定のユーザーのみ OR 全ユーザー　両対応）
+     * 【特定のユーザーのみ】年間実績 & 最新注文 & 資格手当を更新
      *
-     * @param $codeOrUsers 特定のユーザーのmember_code OR 全ユーザーのコレクション
+     * @param int $member_code
      */
-    public function refresh($codeOrUsers) {
-        if (is_numeric($codeOrUsers)) {
-            // 引数が単体（$memberCode）の場合、単一ユーザーの処理を実行
-            $user = User::where('member_code', $codeOrUsers)->first();
-            // 年間実績
-            $params = $this->getSalesParam();
-            $sales = $this->getSalesForMember($codeOrUsers, $params['startDate'], $params['tradeTypes']);
-            $user->sales = $sales;
-            // 最新注文
-            $params = $this->getLatestParam();
-            $latest = $this->getLatestForMember($codeOrUsers, $params['tradeTypes'], $params['idouMinSet']);
-            $user->latest_trade = $latest ? $latest->id : null;
-            // 資格手当(グルーブに所属しておりリーダーでもない場合、そのリーダーの資格手当を再計算)
-            if ($user->sub_number !== 0 && $user->sub_leader == 0) {
-                $subLeaderValue = $user->sub_number;
-                // 該当するサブリーダー$subLeaderを取得
-                $subLeader = User::where('sub_leader', $subLeaderValue)->first();
-                $params = $this->getSubParam();
-                $num = $this->getSubForMember($subLeaderValue, $params['startDate'], $params['tradeTypes'], $params['subMinSet']);
+    public function refreshMember($member_code)
+    {
+        $user = User::where('member_code', $member_code)->first();
+        // 年間実績
+        $params = $this->getSalesParam();
+        $sales = $this->getSalesForMember($member_code, $params['startDate'], $params['tradeTypes']);
+        $user->sales = $sales;
+        // 最新注文
+        $params = $this->getLatestParam();
+        $latest = $this->getLatestForMember($member_code, $params['tradeTypes'], $params['idouMinSet']);
+        $user->latest_trade = $latest ? $latest->id : null;
+        // 資格手当(グルーブに所属しておりリーダーでもない場合、そのリーダーの資格手当を再計算)
+        if ($user->sub_number !== 0 && $user->sub_leader == 0) {
+            $subLeaderValue = $user->sub_number;
+            // 該当するサブリーダー$subLeaderを取得
+            $subLeader = User::where('sub_leader', $subLeaderValue)->first();
+            $params = $this->getSubParam();
+            $num = $this->getSubForMember($subLeaderValue, $params['startDate'], $params['tradeTypes'], $params['subMinSet']);
 
-                // 該当のサブリーダーのsub_nowカラムを更新、上限を500に設定
-                $subLeader->sub_now = min($num*100, 500);
-                $subLeader->save();
-            }
-            $user->save();
-        } elseif (get_class($codeOrUsers) === 'Illuminate\Database\Eloquent\Collection') {
-            // 引数がコレクション（$users）の場合、各ユーザーに対して処理を実行
-            $this->refresh_sales($codeOrUsers);
-            $this->refresh_latest($codeOrUsers);
-            $this->refresh_sub($codeOrUsers);
-        } else {
-            dd($codeOrUsers);
-            // 想定外の引数の場合
-            throw new Exception('更新すべき対象として、想定外の引数が渡されました。' . $codeOrUsers);
+            // 該当のサブリーダーのsub_nowカラムを更新、上限を500に設定
+            $subLeader->sub_now = min($num*100, 500);
+            $subLeader->save();
         }
+        $user->save();
+    }
+
+    /**
+     * 【全ユーザー】年間実績 & 最新注文 & 資格手当を更新
+     *
+     * @param Collection $users
+     */
+    public function refreshAll($users)
+    {
+        $this->refresh_sales($users);
+        $this->refresh_latest($users);
+        $this->refresh_sub($users);
     }
 
     // 全ユーザーの実績を更新
@@ -98,74 +98,6 @@ class FunctionsController extends Controller
             $user->sub_now = min($num*100, 500);
             $user->save();
         }
-    }
-
-    /**
-     * 任意のユーザーの預け記録を更新
-     * 現在合計預けセット数＆DepoRealtimeテーブルを更新
-     *
-     * @param string $memberCode
-     * @param int $tradeType 
-     * @param int $amount 取引合計セット数（更新の場合は差分セット数　【例】旧40,新20：-20）
-     * @param array $details 取引詳細
-     * @param int $add (1)新規・更新、(-1)削除
-     */
-    public function saveDepoForMember($memberCode, $tradeType, $amount, $details, $add) {
-        // 預入れor預出しの判定
-        // $tradeTypeの値をconfig/custom.phpのdepo_tradeTypesと照らし合わせて、$signを正負とする
-        $depoTradeTypesIn = array_fill_keys(config('custom.depo_tradeTypesIn'), 1 * $add);
-        $depoTradeTypesOut = array_fill_keys(config('custom.depo_tradeTypesOut'), -1 * $add);
-        $tradeTypes = $depoTradeTypesIn + $depoTradeTypesOut;
-        $sign = $tradeTypes[$tradeType] ?? throw new Exception("取引タイプが不正です。（預入れor預出し）");
-
-        $user = User::where('member_code', $memberCode)->first();
-        $user->depo_status += $amount * $sign;
-        $user->save();
-
-        // DepoRealtimeの更新
-        foreach ($details as $detail) {
-            $depoRealtime = DepoRealtime::firstOrNew([
-                'member_code' => $memberCode,
-                'product_id' => $detail['product_id']
-            ]);
-            $depoRealtime->amount += $detail['amount'] * $sign;
-            $depoRealtime->save();
-        }
-    }
-
-    private function getSalesParam() {
-        // 今年の最初の日付を取得
-        $startOfYear = Carbon::now()->startOfYear();
-        // 注文対象となる取引タイプを取得
-        $tradeTypes = config('custom.sales_tradeTypes');
-        return [
-            'startDate' => $startOfYear,
-            'tradeTypes' => $tradeTypes,
-        ];
-    }
-    private function getLatestParam() {
-        // 最新の注文にカウントする取引タイプの配列（移動20を除く）
-        $tradeTypes = array_diff(config('custom.sales_tradeTypes'), [20]);
-        // 最新注文の対象となる最小移動合計セット数
-        $idouMinSet = config('custom.idou_minSet');
-        return [
-            'tradeTypes' => $tradeTypes,
-            'idouMinSet' => $idouMinSet,
-        ];
-    }
-    private function getSubParam() {
-        // 資格手当の対象となる最初の日付$startDateを取得
-        $currentDate = Carbon::now();
-        $startDate = $currentDate->copy()->subMonths(config('custom.sub_monthsCovered'))->addDay();
-        // 資格手当の対象となる取引タイプを取得
-        $tradeTypes = config('custom.sales_tradeTypesEigyosho');
-        // 資格手当の対象となる最小合計セット数を取得
-        $subMinSet = config('custom.sub_minSet');
-        return [
-            'startDate' => $startDate,
-            'tradeTypes' => $tradeTypes,
-            'subMinSet' => $subMinSet,
-        ];
     }
 
     /**
@@ -216,7 +148,7 @@ class FunctionsController extends Controller
      * @param int $subMinSet 資格手当対象となる最小合計セット数
      * @return int 資格手当対象となる傘下営業所の人数
      */
-    public function getSubForMember($subLeaderValue, $startDate, $tradeTypes, $subMinSet) {
+    private function getSubForMember($subLeaderValue, $startDate, $tradeTypes, $subMinSet) {
         $num = User::where('sub_number', $subLeaderValue)
                 ->whereHas('tradings', function ($query) use ($startDate, $tradeTypes, $subMinSet) {
                     $query->where('date', '>=', $startDate)
@@ -227,6 +159,40 @@ class FunctionsController extends Controller
         return $num;
     }
 
+    private function getSalesParam() {
+        // 今年の最初の日付を取得
+        $startOfYear = Carbon::now()->startOfYear();
+        // 注文対象となる取引タイプを取得
+        $tradeTypes = config('custom.sales_tradeTypes');
+        return [
+            'startDate' => $startOfYear,
+            'tradeTypes' => $tradeTypes,
+        ];
+    }
+    private function getLatestParam() {
+        // 最新の注文にカウントする取引タイプの配列（移動20を除く）
+        $tradeTypes = array_diff(config('custom.sales_tradeTypes'), [20]);
+        // 最新注文の対象となる最小移動合計セット数
+        $idouMinSet = config('custom.idou_minSet');
+        return [
+            'tradeTypes' => $tradeTypes,
+            'idouMinSet' => $idouMinSet,
+        ];
+    }
+    private function getSubParam() {
+        // 資格手当の対象となる最初の日付$startDateを取得
+        $currentDate = Carbon::now();
+        $startDate = $currentDate->copy()->subMonths(config('custom.sub_monthsCovered'))->addDay();
+        // 資格手当の対象となる取引タイプを取得
+        $tradeTypes = config('custom.sales_tradeTypesEigyosho');
+        // 資格手当の対象となる最小合計セット数を取得
+        $subMinSet = config('custom.sub_minSet');
+        return [
+            'startDate' => $startDate,
+            'tradeTypes' => $tradeTypes,
+            'subMinSet' => $subMinSet,
+        ];
+    }
 
     /**
      * 指定されたメンバーコードのユーザー情報と、そのユーザーの預けの詳細情報を取得する
@@ -307,26 +273,7 @@ class FunctionsController extends Controller
         ];
     }
 
-    /**
-     * 指定された年数分の年月を'YYYYMM'形式で配列にして返す
-     * 0年分が指定された場合は、現在の年月のみを返す
-     * 
-     * @param int $years 取得する年数
-     */
-    public function getMonthArr($years) {
-        if ($years == 0) {
-            $month = Carbon::now()->format('Ym');
-            return $month;
-        } else {
-            $months = [];
-            $currentMonth = Carbon::now();
-            for ($i = 0; $i < 12 * $years; $i++) {
-                $months[] = $currentMonth->format('Ym');
-                $currentMonth->subMonth();
-            }
-            return $months;
-        }
-    }
+
 
 
 
@@ -336,23 +283,27 @@ class FunctionsController extends Controller
      * @param $crawler DomCrawlerで解析されたHTMLデータ
      * @param int $month 参照すべき年月(取引が未登録かどうかの判定に使用)
      */
-    public function getNewTrade($crawler, $month) {
+    public function getNewTrade($crawler, $month)
+    {
+        // キー名の配列（取引セット数の3列['実績', '入庫', '出庫']に対応する）
+        $type = ['sales', 'in', 'out'];
+
         // tbody要素から取引一覧を取得
         $tradeData = [];
-        $crawler->filter('tbody.table-hover tr')->each(function ($node) use (&$tradeData) {
+        $crawler->filter('tbody.table-hover tr')->each(function ($node) use (&$tradeData, $type) {
             $tradeData[] = [
                 'link' => $node->filter('td')->eq(1)->filter('a')->attr('href'),
                 'date' => $node->filter('td')->eq(3)->text(),
                 'name' => $node->filter('td')->eq(6)->text(),
-                'sales' => $node->filter('td')->eq(7)->text(),
-                'in' => $node->filter('td')->eq(8)->text(),
-                'out' => $node->filter('td')->eq(9)->text(),
+                $type[0] => $node->filter('td')->eq(7)->text(),
+                $type[1] => $node->filter('td')->eq(8)->text(),
+                $type[2] => $node->filter('td')->eq(9)->text(),
             ];
         });
-    
+
         // sales, in, outの3つ全てに値が存在しない要素をフィルタリング
-        $tradeData = array_filter($tradeData, function($row) {
-            return !empty($row['sales']) || !empty($row['in']) || !empty($row['out']);
+        $tradeData = array_filter($tradeData, function($row) use ($type) {
+            return !empty($row[$type[0]]) || !empty($row[$type[1]]) || !empty($row[$type[2]]);
         });
     
         // 指定された月の全取引のcheck_noを配列として取得
@@ -360,29 +311,28 @@ class FunctionsController extends Controller
     
         // 未登録の取引を抜粋、必要な属性を設定して新しい配列に入れ替える
         $newTrade = [];
-        foreach ($tradeData as $row) {
+        foreach ($tradeData as $trade) {
             // 'link'から'jutyuno'を抽出して追加
-            $row['jutyuno'] = $this->getNo($row['link']);
+            $trade['jutyuno'] = $this->getNo($trade['link']);
             // 既に登録されている取引をスキップ
-            if (in_array($row['jutyuno'], $arr)) {
+            if (in_array($trade['jutyuno'], $arr)) {
                 continue;
             }
-            if ($row['sales']) {
-                $newTrade[] = $this->setTradeAttributes($row, 'sales');
+            if ($trade[$type[0]]) {
+                $newTrade[] = $this->setTradeAttributes($trade, $type[0]);
             }
-            if ($row['in']) {
-                $newTrade[] = $this->setTradeAttributes($row, 'in');
+            if ($trade[$type[1]]) {
+                $newTrade[] = $this->setTradeAttributes($trade, $type[1]);
             }
-            if ($row['out']) {
-                $newTrade[] = $this->setTradeAttributes($row, 'out');
+            if ($trade[$type[2]]) {
+                $newTrade[] = $this->setTradeAttributes($trade, $type[2]);
             }
         }
     
         // NULLを除外して結果を返す
         return array_filter($newTrade);
     }
-
-    public function getJutyunoArr($month)
+    private function getJutyunoArr($month)
     {
         // 'YYYYMM'から'YYYY-MM'形式に変換
         $formattedMonth = substr($month, 0, 4) . '-' . substr($month, 4, 2);
@@ -394,52 +344,50 @@ class FunctionsController extends Controller
     
         return $arr;
     }
-    public function getNo($string) {
+    private function getNo($string)
+    {
         $string = substr($string, strlen(config('secure.url_forRemove')));
         $string = substr($string, 0, -15);
         return $string;
     }
-    public function setTradeAttributes($row, $type) {
-        // 取引種別に関係なく共通の属性を設定
+    private function setTradeAttributes($trade, $type)
+    {
+        // 氏名からmember_codeを取得
+        $memberCode = $this->getMemberCode($trade['name']);
+        // member_codeと列情報$typeから取引種別を取得
+        $tradeType = $this->getTradeType($memberCode, $type);
+
+        // 取引の属性を設定
         $trade = [
-            'check_no' => $row['jutyuno'],
-            'link' => $row['link'],
-            'date' => $row['date'],
-            'member_code' => $this->getMemberCode($row['name']),
+            'check_no' => $trade['jutyuno'],
+            'link' => $trade['link'],
+            'date' => $trade['date'],
+            'member_code' => $memberCode,
+            'type' => $type,
+            'amount' => $trade[$type],
+            'trade_type' => $tradeType,
         ];
-    
-        // amount, trade_type属性を設定（判明する範囲で）
-        switch ($type) {
-            case 'sales': // 注文
-                $trade['type'] = 'sales';
-                $trade['amount'] = $row['sales'];
-                $trade['trade_type'] = $this->getTradeType($trade['member_code'], 110, 10);
-                break;
-            case 'in': // 預入れ
-                $trade['type'] = 'in';
-                $trade['amount'] = $row['in'];
-                $trade['trade_type'] = $this->getTradeType($trade['member_code'], 111, 11);
-                break;
-            case 'out': // 預け出し
-                $trade['type'] = 'out';
-                $trade['amount'] = $row['out'];
-                $trade['trade_type'] = $this->getTradeType($trade['member_code'], 121, 21);
-                break;
-        }
-    
+
         return $trade;
     }    
-    public function getMemberCode($name) {
+    public function getMemberCode($name)
+    {
+        $dairiten = 3851;
         if ($name == '店頭販売') {
-            return 3851;
+            return $dairiten;
         }
         // ユーザーを検索し、見つからない場合は代理店のmember_codeを返す
         $user = User::where('name', $name)->first();
-        return $user->member_code ?? 3851;
+        return $user->member_code ?? $dairiten;
     }
-    private function getTradeType($memberCode, $defaultType, $alternativeType) {
-        // member_codeが代理店(3851)かどうかの判別
-        return $memberCode == 3851 ? $defaultType : $alternativeType;
+    public function getTradeType($memberCode, $type)
+    {
+        $types = [
+            'sales' => [110, 10],
+            'in' => [111, 11],
+            'out' => [121, 21],
+        ];
+        return $memberCode == 3851 ? $types[$type][0] : $types[$type][1];
     }
 
     /**
@@ -448,17 +396,18 @@ class FunctionsController extends Controller
      * @param $crawler DomCrawlerで解析されたHTMLデータ
      * @param string $type 取引種別['sales', 'in', 'out']のどれか
      */
-    public function getTradeData($crawler, $type) {
+    public function getTradeData($crawler, $type)
+    {
         // tbody要素の内容を取得
         $details = [];
         $crawler->filter('tbody.table-hover')->first()->filter('tr')
         ->each(function ($node) use (&$details, $type) {
             if (!($node->filter('th')->eq(0)->count() > 0)) {
                 // 商品名の取得
-                $row['name'] = $node->filter('td')->eq(0)->text();
+                $detail['name'] = $node->filter('td')->eq(0)->text();
               
                 // 商品名から商品IDを取得
-                $row['product_id'] = $this->getProductId($row['name']);
+                $detail['product_id'] = Product::getProductId($detail['name']);
 
                 // セット数を取得
                 // 取引種別ごとにセット数が記入された列が異なるためmatch式で場合分け
@@ -470,38 +419,15 @@ class FunctionsController extends Controller
                 };
                 // セット数の値が存在しない場合(取引に２種類以上の取引種別が含まれる場合に発生)はその行はスキップ
                 if ($amount) {
-                    $row['amount'] = $amount;
-                    $details[] = $row;
+                    $detail['amount'] = $amount;
+                    $details[] = $detail;
                 }
             }
         });
         return $details;
     }
-    public function getProductId($name) {
-        // nameからproduct_idを取得
-        $product = Product::where('name', $name)->first();
-        if ($product) {
-            return $product->id;
-        } else {
-            // 新規の商品名の場合、その商品をproduct_idを500番台として仮登録
-            // productsテーブルのidが500以上で最も大きいidを取得
-            $maxId = Product::where('id', '>', 500)->max('id');
-            // 新しいidを決定
-            $newId = $maxId ? $maxId + 1 : 501;
-            // 新しいProductレコードを作成
-            $product = new Product();
-            $product->id = $newId;
-            $product->name = $name;
-            $product->product_type = 5;
-            $product->save();
 
-            return $newId;
-        }
-    }
     
-
-
-
     /**
      * 取引の新規登録or更新を行う
      *
@@ -510,7 +436,8 @@ class FunctionsController extends Controller
      * @param array $details 取引詳細(各要素に['product_id', 'amount']が必須)
      * @param int $change_detail 新規登録か$detailsに変更がある場合に「１」を指定
      */
-    public function update_trade($tradeId, $tradeData, $details, $change_detail) {
+    public function update_trade($tradeId, $tradeData, $details, $change_detail)
+    {
         if ($tradeId) {
             // 編集の時は編集前データを保持
             $oldTrading = Trading::find($tradeId);
@@ -573,6 +500,39 @@ class FunctionsController extends Controller
             $this->saveDepoForMember($tradeData['member_code'], $tradeData['trade_type'], $tradeData['amount'], $details, 1);
         }
     }
+    
+    /**
+     * 任意のユーザーの預け記録を更新
+     * 現在合計預けセット数＆DepoRealtimeテーブルを更新
+     *
+     * @param string $memberCode
+     * @param int $tradeType 
+     * @param int $amount 取引合計セット数（更新の場合は差分セット数　【例】旧40,新20：-20）
+     * @param array $details 取引詳細
+     * @param int $add (1)新規・更新、(-1)削除
+     */
+    public function saveDepoForMember($memberCode, $tradeType, $amount, $details, $add) {
+        // 預入れor預出しの判定
+        // $tradeTypeの値をconfig/custom.phpのdepo_tradeTypesと照らし合わせて、$signを正負とする
+        $depoTradeTypesIn = array_fill_keys(config('custom.depo_tradeTypesIn'), 1 * $add);
+        $depoTradeTypesOut = array_fill_keys(config('custom.depo_tradeTypesOut'), -1 * $add);
+        $tradeTypes = $depoTradeTypesIn + $depoTradeTypesOut;
+        $sign = $tradeTypes[$tradeType] ?? throw new Exception("取引タイプが不正です。（預入れor預出し）");
+
+        $user = User::where('member_code', $memberCode)->first();
+        $user->depo_status += $amount * $sign;
+        $user->save();
+
+        // DepoRealtimeの更新
+        foreach ($details as $detail) {
+            $depoRealtime = DepoRealtime::firstOrNew([
+                'member_code' => $memberCode,
+                'product_id' => $detail['product_id']
+            ]);
+            $depoRealtime->amount += $detail['amount'] * $sign;
+            $depoRealtime->save();
+        }
+    }
 
 
     /**
@@ -605,4 +565,24 @@ class FunctionsController extends Controller
         return $date->format('Y年n月j日');
     }
 
+    /**
+     * 指定された年数分の年月を'YYYYMM'形式で配列にして返す
+     * 0年分が指定された場合は、現在の年月のみを返す
+     * 
+     * @param int $years 取得する年数
+     */
+    public function getMonthArr($years) {
+        if ($years == 0) {
+            $month = Carbon::now()->format('Ym');
+            return $month;
+        } else {
+            $months = [];
+            $currentMonth = Carbon::now();
+            for ($i = 0; $i < 12 * $years; $i++) {
+                $months[] = $currentMonth->format('Ym');
+                $currentMonth->subMonth();
+            }
+            return $months;
+        }
+    }
 }

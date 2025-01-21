@@ -30,7 +30,7 @@ class AppServiceProvider extends ServiceProvider
             if ($user) {
                 
                 $href1 = ["/sales", "/depo", "/admin", "/upload", "/setting"];
-                $activ1 = ["sales*", "depo*", "admin*", "upload*", "setting*"];
+                $activ1 = ["sales*", "depo*", "admin*", "trade*", "setting*"];
                 $text1 = ["実績", "預け", "管理用", "取引登録", "設定"];
                 $href21 = '/sales/member/' . $user->member_code;
                 $href22 = '/depo/member/' . $user->member_code;

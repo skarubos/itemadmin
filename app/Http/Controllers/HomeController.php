@@ -236,7 +236,7 @@ class HomeController extends Controller
         return view('upload');
     }
 
-    public function show_admin(Request $request)
+    public function show_admin()
     {
         $users = User::where('status', 1)
             ->select('id', 'name', 'member_code', 'sub_leader', 'sub_now')
@@ -262,17 +262,17 @@ class HomeController extends Controller
             [
                 'label' => '取引種別',
                 'key' => ['trade_type', 'name'],
-                'route' => ['tradeType.create', 'tradeType.edit']
+                'route' => ['setting.tradeType.create', 'setting.tradeType.edit']
             ],
             [
                 'label' => '商品',
                 'key' => ['product_type', 'name'],
-                'route' => ['product.create', 'product.edit']
+                'route' => ['setting.product.create', 'setting.product.edit']
             ],
             [
                 'label' => 'メンバー',
                 'key' => ['member_code', 'name'],
-                'route' => ['user.create', 'user.edit']
+                'route' => ['setting.user.create', 'setting.user.edit']
             ],
         ];
 
@@ -289,7 +289,7 @@ class HomeController extends Controller
     public function refresh_member(Request $request) {
         $member_code = $request->input('member_code');
         $callback = function () use ($member_code) {
-            $this->functions->refresh($member_code);
+            $this->functions->refreshMember($member_code);
         };
         return $this->handleTransaction(
             $callback,
@@ -302,7 +302,7 @@ class HomeController extends Controller
     public function refresh_all() {
         $users = User::where('status', 1)->get();
         $callback = function () use ($users) {
-            $this->functions->refresh($users);
+            $this->functions->refreshAll($users);
         };
         return $this->handleTransaction(
             $callback,

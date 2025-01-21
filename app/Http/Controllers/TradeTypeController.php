@@ -49,7 +49,7 @@ class TradeTypeController extends Controller
     public function delete(IdRequest $request)
     {
         $callback = function () use ($request) {
-            $result = TradeType::deleteById($request->validated()['id']);
+            TradeType::find($request->validated()['id'])->delete();
         };
         return $this->handleTransaction(
             $callback,

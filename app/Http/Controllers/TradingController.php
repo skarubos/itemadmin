@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use App\Http\Requests\IdRequest;
+use App\Http\Requests\TradingRequest;
 use App\Http\Traits\HandlesTransactions;
 use App\Models\User;
 use App\Models\Trading;
@@ -41,43 +42,6 @@ class TradingController extends Controller
         return view('trading.check', compact('newTrade'));
     }
 
-    public function change_status($tradeId, $remain) {
-        try {
-            $trade = Trading::find($tradeId);
-            if (!$trade) {
-                throw new \Exception('取引ID'.$tradeId.'が見つかりません。');
-            }
-            $trade->status = 1;
-            $trade->save();
-
-            // 残り件数に応じてリダイレクト先を設定
-            return $this->handleRedirect($tradeId, $remain);
-        } catch (\Exception $e) {
-            return back()->withErrors(['error' => '更新に失敗！'.$e]);
-        }
-    }
-    /**
-     * リダイレクト処理を行う
-     *
-     * @param string $tradeId エラー表示ID
-     * @param int|null $remain 残り件数
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    private function handleRedirect($tradeId, $remain)
-    {
-        $remain--;
-        if ($remain > 0) {
-            return redirect()->route('trade.check')
-                ->with('success', '取引ID【'.$tradeId.'】の確認完了！残り'.$remain.'件');
-        } elseif ($remain == 0) {
-            return redirect()->route('sales')
-                ->with('success', '取引ID【'.$tradeId.'】の確認完了！');
-        } else {
-            return redirect()->route('sales')
-                ->with('success', '取引ID【'.$tradeId.'】の確認完了！残り件数(remain)の値が不正です。');
-        }
-    }
-
     public function show_edit_request(IdRequest $request) {
         // POSTされたIDをURLに含めてリダイレクト
         $route = '/trade/edit/' . $request->input('id') . '/0';
@@ -107,6 +71,18 @@ class TradingController extends Controller
         return view('trading.edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
     }
 
+    public function show_create()
+    {
+        // 取引データを格納するインスタンス
+        $trade = new Trading;
+
+        // ドロップダウンリスト表示に必要なデータを取得
+        $users = User::getForDropdownList();
+        $trade_types = TradeType::getTradeTypes();
+
+        return view('trading.edit', compact('trade', 'users', 'trade_types'));
+    }
+
     public function show_create_idou()
     {
         // 取引データを格納するインスタンス
@@ -115,11 +91,9 @@ class TradingController extends Controller
 
         // ドロップダウンリスト表示に必要なデータを取得
         $users = User::getForDropdownList();
-        $trade_types = TradeType::getTradeTypes();
+        $trade_types = TradeType::getTradeTypes($trade->trade_type);
 
-        $details = [];
-        $remain = 0;
-        return view('trading.edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
+        return view('trading.edit', compact('trade', 'users', 'trade_types'));
     }
 
     public function upload_check(Request $request)
@@ -206,10 +180,101 @@ class TradingController extends Controller
         $trade_types = TradeType::getTradeTypes();
 
         // 取引タイプを判明する範囲で場合分け
-        $trade->trade_type = $this->functions->getTradeType($trade->member_code, $type);
+        $trade->trade_type = $this->functions->selectTradeType($trade->member_code, $type);
 
-        $remain = 0;
-        return view('trading.edit', compact('trade', 'details', 'users', 'trade_types', 'remain'));
+        return view('trading.edit', compact('trade', 'details', 'users', 'trade_types'));
+    }
+
+    public function store(TradingRequest $request)
+    {
+        // バリデーション済みのデータを取得
+        $trade = $request->validated();
+        // 編集対象の取引IDを取得（新規の場合はNULL）
+        $tradeId = $trade['trade_id'] ?? null;
+        $details = $trade['details'] ?? null;
+        // 取引詳細(1:変更あり(新規登録を含む))
+        $change_detail = $trade['change_detail'] ?? null;
+        
+        $callback = function () use ($tradeId, $trade, $details, $change_detail) {
+            $this->functions->update_trade($tradeId, $trade, $details, $change_detail);
+        };
+
+        // メッセージとDB保存成功時のリダイレクト用ルートを設定
+        $remain = $trade['remain'];
+        if ($remain > 0) {
+            // 自動登録取引の確認時のルートとメッセージを取得
+            $params = $this->getRouteAndMessage($tradeId, $remain);
+            $route = $params['route'];
+            $sMessage = $params['sMessage'];
+            $eMessage = $params['fMessage'];
+        } elseif ($tradeId) {
+            $route = 'admin';
+            $sMessage = '編集した取引データが正常に保存されました。';
+            $eMessage = '編集した取引データの保存中にエラーが発生しました。';
+        } else {
+            $route = 'trade.upload';
+            $sMessage = '新規取引データが正常に保存されました。';
+            $eMessage = '新規取引データの保存中にエラーが発生しました。';
+        }
+        
+        return $this->handleTransaction(
+            $callback,
+            $route, // 成功時のリダイレクトルート
+            $sMessage, // 成功メッセージ
+            $eMessage // エラーメッセージ
+        );
+    }
+
+    public function change_status($tradeId, $remain) {
+        $callback = function () use ($tradeId) {
+            $trade = Trading::find($tradeId);
+            if (!$trade) {
+                throw new \Exception('取引ID'.$tradeId.'が見つかりません。');
+            }
+            $trade->status = 1;
+            $trade->save();
+        };
+
+        // ルートとメッセージを取得
+        $params = $this->getRouteAndMessage($tradeId, $remain);
+        $route = $params['route'];
+        $sMessage = $params['sMessage'];
+        $eMessage = $params['fMessage'];
+
+        return $this->handleTransaction(
+            $callback,
+            $route, // 成功時のリダイレクトルート
+            $sMessage, // 成功メッセージ
+            $eMessage // エラーメッセージ
+        );
+    }
+
+    /**
+     * 自動登録取引の確認時のルートとメッセージを取得
+     *
+     * @param string $tradeId 取引ID
+     * @param int|null $remain 残り件数
+     * @return string $route $sMessage $eMessage
+     */
+    private function getRouteAndMessage($tradeId, $remain)
+    {
+        $remain--;
+        if ($remain > 0) {
+            $route = 'trade.check';
+            $sMessage = '取引ID【'.$tradeId.'】の確認完了！残り'.$remain.'件';
+        } elseif ($remain == 0) {
+            $route = 'sales';
+            $sMessage = '取引ID【'.$tradeId.'】の確認完了！';
+        } else {
+            $route = 'sales';
+            $sMessage = '取引ID【'.$tradeId.'】の確認完了！残り件数(remain)の値が不正です。';
+        }
+        $eMessage = '取引データの保存中にエラーが発生しました。';
+        return [
+            'route' => $route,
+            'sMessage' => $sMessage,
+            'fMessage' => $eMessage,
+        ];
     }
 
     public function delete(IdRequest $request)
@@ -236,7 +301,7 @@ class TradingController extends Controller
             // 注文の時の処理
             if (in_array($trading->trade_type, config('custom.sales_tradeTypes'))) {
                 // 最新注文&年間実績&資格手当を更新
-                $this->functions->refresh($trading->member_code);
+                $this->functions->refreshMember($trading->member_code);
             }
 
             // 預入れor預出しの時の処理

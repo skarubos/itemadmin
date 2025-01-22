@@ -84,12 +84,16 @@ class HomeController extends Controller
         return view('sales-home', compact('users', 'latestTrades', 'lastUpdate' ,'newTrade', 'newProduct'));
     }
 
-    public function show_member_sales($member_code){
-        // 表示する年数を取得
-        $years = config('custom.sales_howManyYears');
+    public function show_member_sales($member_code)
+    {
+        // ユーザー情報を取得
+        $user = User::where('member_code', $member_code)
+        ->select('name', 'member_code', 'sales', 'depo_status')
+        ->first();
+
         // 年数分の実績データを取得
-        $data = $this->functions->get_sales_detail($member_code, $years);
-        return view('member.sales', compact('data'));
+        $data = Trading::getSalesDetailForMember($member_code);
+        return view('member.sales', compact('user', 'data'));
     }
 
     public function show_member_sales_list($member_code)
@@ -131,8 +135,12 @@ class HomeController extends Controller
     }
     
     public function show_member_depo($member_code){
-        $data = $this->functions->getMemberDepo($member_code);
-        return view('member.depo', compact('data'));
+        $user = User::where('member_code', $member_code)
+            ->select('member_code', 'name', 'depo_status')
+            ->first();
+        $details = DepoRealtime::getDepoRealtime($member_code);
+
+        return view('member.depo', compact('user', 'details'));
     }
 
     public function show_member_depo_history($member_code) {

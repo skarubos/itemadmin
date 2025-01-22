@@ -33,17 +33,19 @@ class TradeType extends Model
     /**
      * 条件で絞り込んだ取引種別を取得するメソッド
      *
-     * @param string $name config\custom.phpで定義されているキー名
+     * @param string|int $value config\custom.phpで定義されているキー名 | 取引種別ID
      * @return \Illuminate\Database\Eloquent\Collection 取引種別一覧
      */
-    public static function getTradeTypes($name = null)
+    public static function getTradeTypes($value = null)
     {
-        if (empty($name)) {
+        if (empty($value)) {
             return self::select('trade_type', 'name', 'caption')->get();
+        } elseif (is_int($value)) {
+            return self::where('trade_type', $value)->select('trade_type', 'name', 'caption')->first();
         }
         
-        // 引数 $name を基に config から配列を取得
-        $typesArr = config('custom.' . $name);
+        // 引数 $value を基に config から配列を取得
+        $typesArr = config('custom.' . $value);
 
         // 配列に含まれるtrade_typeを絞り込んで取得
         return self::whereIn('trade_type', $typesArr)

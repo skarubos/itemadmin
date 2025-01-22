@@ -36,15 +36,22 @@ class DepoRealtime extends Model
      */
     public static function getDepoRealtime($member_code)
     {
-        $details = DepoRealtime::with(['product' => function($query) {
+        $details = self::with(['product' => function($query) {
                 $query->select('id', 'name');
             }])
             ->where('member_code', $member_code)
-            ->where('amount', '!=', 0)
             ->select('product_id', 'amount')
             ->orderBy('product_id', 'ASC')
             ->get();
         return $details;
+    }
+
+    /**
+     * amount = 0 のレコードを削除するメソッド
+     */
+    public static function refreshDepoRealtime()
+    {
+        self::where('amount', 0)->delete();
     }
 
 }

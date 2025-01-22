@@ -5,15 +5,15 @@
         <div class="flex mb-6">
             <div class="w-4/6">
                 <div class="mb-2 text-center">
-                    <div class="inline-block text-2xl font-bold align-bottom">{{ $data['user']->name }}</div>
+                    <div class="inline-block text-2xl font-bold align-bottom">{{ $user->name }}</div>
                 </div>
                 <div class="text-center">
-                    <p class="text-xl ">年間：<span class="text-2xl font-bold">{{ $data['user']->sales }}</span><span class="text-base pl-0.5">セット</span></p>
-                    <p class="text-lg">（現在預け：{{ $data['user']->depo_status }}）</p>
+                    <p class="text-xl ">年間：<span class="text-2xl font-bold">{{ $user->sales }}</span><span class="text-base pl-0.5">セット</span></p>
+                    <p class="text-lg">（現在預け：{{ $user->depo_status }}）</p>
                 </div>
             </div>
             <div class="w-2/6 content-center">
-                <a href="/sales/member/{{ $data['user']['member_code'] }}/list">
+                <a href="/sales/member/{{ $user->member_code }}/list">
                     <x-primary-button class="w-full items-center justify-center px-3">
                         お取引<br>一覧
                     </x-primary-button>

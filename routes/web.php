@@ -35,13 +35,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/refresh_all', [HomeController::class, 'refresh_all'])->name('refresh_all');
         Route::get('/reset_all', [HomeController::class, 'reset_all'])->name('reset_all');
         
-        Route::post('/trade/create', [TradingController::class, 'upload_check'])->name('trade.create');
-        Route::post('/trade/create/idou', [TradingController::class, 'show_create_idou'])->name('trade.create.forIdou');
+        Route::get('/trade/create', [TradingController::class, 'show_create'])->name('trade.create');
+        Route::get('/trade/create/idou', [TradingController::class, 'show_create_idou'])->name('trade.create.idou');
+        Route::post('/trade/create/upload', [TradingController::class, 'upload_check'])->name('trade.create.upload');
         Route::get('/trade/check', [TradingController::class, 'show_check'])->name('trade.check');
         Route::get('/trade/checked/{trade_id}/{remain}', [TradingController::class, 'change_status']);
         Route::get('/trade/edit/{trade_id}/{remain}', [TradingController::class, 'show_edit']);
         Route::get('/trade/edit', [TradingController::class, 'show_edit_request'])->name('trade.edit');
-        Route::post('/trade/edit', [PostingController::class, 'save_trade']);
+        Route::post('/trade/edit', [TradingController::class, 'store']);
         Route::post('/trade/delete', [TradingController::class, 'delete'])->name('trade.delete');
 
         Route::get('/scraping', [ScrapingController::class, 'testScrape'])->name('scraping');

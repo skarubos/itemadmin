@@ -13,7 +13,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Cookie\SetCookie;
 // use Symfony\Component\Process\Exception\ProcessFailedException;
-use Symfony\Component\Process\Process;
+// use Symfony\Component\Process\Process;
 use Symfony\Component\DomCrawler\Crawler;
 
 class ScrapingController extends Controller

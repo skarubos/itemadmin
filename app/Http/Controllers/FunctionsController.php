@@ -17,6 +17,9 @@ use Exception;
 
 class FunctionsController extends Controller
 {
+
+    /*********************  ここからリフレッシュ関連  ******************************/
+
     /**
      * 【特定のユーザーのみ】年間実績 & 最新注文 & 資格手当を更新
      *
@@ -26,12 +29,10 @@ class FunctionsController extends Controller
     {
         $user = User::where('member_code', $member_code)->first();
         // 年間実績
-        $params = $this->getSalesParam();
-        $sales = $this->getSalesForMember($member_code, $params['startDate'], $params['tradeTypes']);
+        $sales = Trading::getSalesForMember($member_code);
         $user->sales = $sales;
         // 最新注文
-        $params = $this->getLatestParam();
-        $latest = $this->getLatestForMember($member_code, $params['tradeTypes'], $params['idouMinSet']);
+        $latest = Trading::getLatestForMember($member_code);
         $user->latest_trade = $latest ? $latest->id : null;
         // 資格手当(グルーブに所属しておりリーダーでもない場合、そのリーダーの資格手当を再計算)
         if ($user->sub_number !== 0 && $user->sub_leader == 0) {
@@ -58,22 +59,21 @@ class FunctionsController extends Controller
         $this->refresh_sales($users);
         $this->refresh_latest($users);
         $this->refresh_sub($users);
+        DepoRealtime::refreshDepoRealtime();
     }
 
     // 全ユーザーの実績を更新
     public function refresh_sales($users) {
-        $params = $this->getSalesParam();
         foreach ($users as $user) {
-            $sales = $this->getSalesForMember($user->member_code, $params['startDate'], $params['tradeTypes']);
+            $sales = Trading::getSalesForMember($user->member_code);
             $user->sales = $sales;
             $user->save();
         }
     }
     // 全ユーザーの最新取引を更新
     public function refresh_latest($users) {
-        $params = $this->getLatestParam();
         foreach ($users as $user) {
-            $latest = $this->getLatestForMember($user->member_code, $params['tradeTypes'], $params['idouMinSet']);
+            $latest = Trading::getLatestForMember($user->member_code);
             $user->latest_trade = $latest ? $latest->id : null;
             $user->save();
         }
@@ -101,45 +101,6 @@ class FunctionsController extends Controller
     }
 
     /**
-     * 任意のユーザーの合計実績を取得
-     *
-     * @param string $memberCode
-     * @param mixed $startDate 集計開始日
-     * @param array $tradeTypes 実績カウントする取引タイプの配列
-     * @return int 取引数量の合計
-     */
-    private function getSalesForMember($memberCode, $startDate, $tradeTypes) {
-        $sales = Trading::where('member_code', $memberCode)
-            ->where('date', '>=', $startDate)
-            ->whereIn('trade_type', $tradeTypes)
-            ->sum('amount');
-        return $sales;
-    }
-
-    /**
-     * 任意のユーザーの最新の注文を検索
-     *
-     * @param string $memberCode
-     * @param array $tradeTypes 最新の注文にカウントする取引タイプの配列（必ず移動20を除くこと！）
-     * @param int $idouMinSet 最新注文の対象となる最小移動合計セット数
-     * @return int 取引ID
-     */
-    private function getLatestForMember($memberCode, $tradeTypes, $idouMinSet) {
-        $latest = Trading::where('member_code', $memberCode)
-            ->where(function($query) use ($tradeTypes, $idouMinSet) {
-                $query->whereIn('trade_type', $tradeTypes)
-                    ->orWhere(function($query) use ($idouMinSet) {
-                        $query->where('trade_type', 20)
-                            ->where('amount', '>=', $idouMinSet);
-                    });
-            })
-            ->orderBy('date', 'DESC')
-            ->select('id')
-            ->first();
-        return $latest;
-    }    
-    
-    /**
      * 任意のサブリーダーの資格手当を取得
      *
      * @param string $subLeaderValue グループナンバー
@@ -158,27 +119,6 @@ class FunctionsController extends Controller
                 ->count();
         return $num;
     }
-
-    private function getSalesParam() {
-        // 今年の最初の日付を取得
-        $startOfYear = Carbon::now()->startOfYear();
-        // 注文対象となる取引タイプを取得
-        $tradeTypes = config('custom.sales_tradeTypes');
-        return [
-            'startDate' => $startOfYear,
-            'tradeTypes' => $tradeTypes,
-        ];
-    }
-    private function getLatestParam() {
-        // 最新の注文にカウントする取引タイプの配列（移動20を除く）
-        $tradeTypes = array_diff(config('custom.sales_tradeTypes'), [20]);
-        // 最新注文の対象となる最小移動合計セット数
-        $idouMinSet = config('custom.idou_minSet');
-        return [
-            'tradeTypes' => $tradeTypes,
-            'idouMinSet' => $idouMinSet,
-        ];
-    }
     private function getSubParam() {
         // 資格手当の対象となる最初の日付$startDateを取得
         $currentDate = Carbon::now();
@@ -194,87 +134,11 @@ class FunctionsController extends Controller
         ];
     }
 
-    /**
-     * 指定されたメンバーコードのユーザー情報と、そのユーザーの預けの詳細情報を取得する
-     *
-     * @param string $memberCode
-     * @return array 以下のキーを持つ連想配列を返す：
-     *               - 'user': ユーザー情報 (member_code, name, depo_status) を含むオブジェクト
-     *               - 'details': 預けの詳細情報を格納したコレクション。各要素は DepoRealtime モデルのインスタンスで、
-     *                            product リレーション（商品情報）を含む。
-     */
-    public function getMemberDepo($memberCode){
-        $user = User::where('member_code', $memberCode)
-            ->select('member_code', 'name', 'depo_status')
-            ->first();
-        $details = DepoRealtime::with('product')
-            ->where('member_code', $memberCode)
-            ->where('amount', '!=', 0)
-            ->orderBy('product_id', 'ASC')
-            ->get();
-        return [
-            'user' => $user,
-            'details' => $details,
-        ];
-    }
-
-    /**
-     * 指定されたメンバーコードのユーザー情報と、指定された年数分の年間売上詳細を取得する
-     *
-     * @param string $memberCode
-     * @param int $years 取得する年数（例：3 を指定すると、過去3年分のデータを取得）
-     * @return array 以下のキーを持つ連想配列を返す：
-     *               - 'user': ユーザー情報 (name, member_code, sales, depo_status) を含むオブジェクト
-     *               - 'years': 取得対象となった年（西暦）の配列
-     *               - 'yearlySales': 年ごと、月ごとの売上数量を格納した2次元配列
-     *               - 'totals': 年ごとの売上数量の合計を格納した配列
-     */
-    public function get_sales_detail($memberCode, $years){
-        $user = User::where('member_code', $memberCode)
-            ->select('name', 'member_code', 'sales', 'depo_status')
-            ->first();
-
-        $currentYear = Carbon::now()->year;
-        $currentMonth = Carbon::now()->month;
-
-        // 取得する年の西暦を取得
-        $yearArr = [];
-        for ($i = 0; $i < $years; $i++) {
-            $yearArr[] = $currentYear - $i;
-        }
-        $yearArr = array_reverse($yearArr);
-
-        // 月ごとの実績を取得
-        $yearlySales = [];
-        $totals = array_fill(0, $years, 0);
-        for ($month = 1; $month <= 12; $month++) {
-            $monthlySales = [];
-            foreach ($yearArr as $i => $year) {
-                $monthlySum = null;
-                if (!($year === $currentYear && $month > $currentMonth)) {
-                    $startOfMonth = Carbon::createFromDate($year, $month, 1)->startOfMonth();
-                    $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth();
-                    $monthlySum = Trading::where('member_code', $memberCode)
-                        ->whereBetween('date', [$startOfMonth, $endOfMonth])
-                        ->whereIn('trade_type', config('custom.sales_tradeTypes'))
-                        ->sum('amount');
-                }
-                $monthlySales[] = $monthlySum;
-                $totals[$i] += $monthlySum;
-            }
-            $yearlySales[] = $monthlySales;
-        }
-
-        return [
-            'user' => $user,
-            'years' => $yearArr,
-            'yearlySales' => $yearlySales,
-            'totals' => $totals,
-        ];
-    }
 
 
 
+
+    /*********************  ここからスクレイピング関連  ******************************/
 
 
     /**
@@ -355,7 +219,7 @@ class FunctionsController extends Controller
         // 氏名からmember_codeを取得
         $memberCode = $this->getMemberCode($trade['name']);
         // member_codeと列情報$typeから取引種別を取得
-        $tradeType = $this->getTradeType($memberCode, $type);
+        $tradeType = $this->selectTradeType($memberCode, $type);
 
         // 取引の属性を設定
         $trade = [
@@ -370,7 +234,7 @@ class FunctionsController extends Controller
 
         return $trade;
     }    
-    public function getMemberCode($name)
+    private function getMemberCode($name)
     {
         $dairiten = 3851;
         if ($name == '店頭販売') {
@@ -380,7 +244,7 @@ class FunctionsController extends Controller
         $user = User::where('name', $name)->first();
         return $user->member_code ?? $dairiten;
     }
-    public function getTradeType($memberCode, $type)
+    public function selectTradeType($memberCode, $type)
     {
         $types = [
             'sales' => [110, 10],
@@ -444,6 +308,9 @@ class FunctionsController extends Controller
             $oldDetails = TradeDetail::where('trade_id', $tradeId)->get();
             // 編集前データは保持したまま変更用にコピー
             $trading = clone $oldTrading;
+            if ($trading->trade_type != $tradeData['trade_type'] && is_null($details)) {
+                throw new Exception("詳細のない取引は取引種別を変更できません");
+            }
         } else {
             // 新規登録の場合
             $trading = new Trading();
@@ -482,7 +349,7 @@ class FunctionsController extends Controller
         if ($tradeId) {
             // 取引ユーザーが変更された場合は変更前のユーザーの最新注文&年間実績&資格手当を更新
             if ($tradeData['member_code'] != $oldTrading->member_code) {
-                $this->refresh($oldTrading->member_code);
+                $this->refreshMember($oldTrading->member_code);
             }
             // 預入れor預出しの時の処理
             if (in_array($oldTrading->trade_type, config('custom.depo_tradeTypes'))) {
@@ -492,7 +359,7 @@ class FunctionsController extends Controller
         }
 
         // 最新注文&年間実績&資格手当を更新
-        $this->refresh($tradeData['member_code']);
+        $this->refreshMember($tradeData['member_code']);
 
         // 預入れor預出しの時の処理
         if (in_array($tradeData['trade_type'], config('custom.depo_tradeTypes'))) {
@@ -507,7 +374,7 @@ class FunctionsController extends Controller
      *
      * @param string $memberCode
      * @param int $tradeType 
-     * @param int $amount 取引合計セット数（更新の場合は差分セット数　【例】旧40,新20：-20）
+     * @param int $amount 取引合計セット数
      * @param array $details 取引詳細
      * @param int $add (1)新規・更新、(-1)削除
      */
@@ -529,10 +396,26 @@ class FunctionsController extends Controller
                 'member_code' => $memberCode,
                 'product_id' => $detail['product_id']
             ]);
+            
+            // amountに値を加算
             $depoRealtime->amount += $detail['amount'] * $sign;
-            $depoRealtime->save();
+
+            // 加算後の値が0である場合、物理削除
+            if ($depoRealtime->amount == 0) {
+                $depoRealtime->delete();
+            } else {
+                // それ以外の場合、保存
+                $depoRealtime->save();
+            }
         }
     }
+
+
+
+
+
+
+    /*********************  ここからユーティリティ  ******************************/
 
 
     /**

@@ -123,7 +123,6 @@ class Trading extends Model
         return $query->get();
     }
 
-
     /**
      * 最新の取引1件を取得するメソッド
      * @return Collection 最新の取引
@@ -131,6 +130,103 @@ class Trading extends Model
     public static function getLatestTrade()
     {
         return self::orderBy('date', 'DESC')->first();
+    }
+
+    /**
+     * 任意のユーザーの合計実績を取得
+     *
+     * @param string $memberCode
+     * @return int 取引数量の合計
+     */
+    public static function getSalesForMember($memberCode)
+    {
+        // 今年の最初の日付を取得
+        $startDate = Carbon::now()->startOfYear();
+        // 注文対象となる取引タイプを取得
+        $tradeTypes = config('custom.sales_tradeTypes');
+
+        $sales = self::where('member_code', $memberCode)
+            ->where('date', '>=', $startDate)
+            ->whereIn('trade_type', $tradeTypes)
+            ->sum('amount');
+        return $sales;
+    }
+
+    /**
+     * 任意のユーザーの最新の注文を検索
+     *
+     * @param string $memberCode
+     * @return int 取引ID
+     */
+    public static function getLatestForMember($memberCode) {
+        // 最新の注文にカウントする取引タイプの配列（移動20を除く）
+        $tradeTypes = array_diff(config('custom.sales_tradeTypes'), [20]);
+        // 最新注文の対象となる最小移動合計セット数
+        $idouMinSet = config('custom.idou_minSet');
+        $latest = self::where('member_code', $memberCode)
+            ->where(function($query) use ($tradeTypes, $idouMinSet) {
+                $query->whereIn('trade_type', $tradeTypes)
+                    ->orWhere(function($query) use ($idouMinSet) {
+                        $query->where('trade_type', 20)
+                            ->where('amount', '>=', $idouMinSet);
+                    });
+            })
+            ->orderBy('date', 'DESC')
+            ->select('id')
+            ->first();
+        return $latest;
+    }
+
+    /**
+     * 指定されたメンバーコードのユーザー情報と、指定された年数分の年間売上詳細を取得する
+     *
+     * @param string $memberCode
+     * @return array 以下のキーを持つ連想配列を返す：
+     *               - 'years': 取得対象となった年（西暦）の配列
+     *               - 'yearlySales': 年ごと、月ごとの売上数量を格納した2次元配列
+     *               - 'totals': 年ごとの売上数量の合計を格納した配列
+     */
+    public static function getSalesDetailForMember($memberCode)
+    {
+        // 表示する年数を取得
+        $years = config('custom.sales_howManyYears');
+
+        $currentYear = Carbon::now()->year;
+        $currentMonth = Carbon::now()->month;
+
+        // 取得する年の西暦を取得
+        $yearArr = [];
+        for ($i = 0; $i < $years; $i++) {
+            $yearArr[] = $currentYear - $i;
+        }
+        $yearArr = array_reverse($yearArr);
+
+        // 月ごとの実績を取得
+        $yearlySales = [];
+        $totals = array_fill(0, $years, 0);
+        for ($month = 1; $month <= 12; $month++) {
+            $monthlySales = [];
+            foreach ($yearArr as $i => $year) {
+                $monthlySum = null;
+                if (!($year === $currentYear && $month > $currentMonth)) {
+                    $startOfMonth = Carbon::createFromDate($year, $month, 1)->startOfMonth();
+                    $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+                    $monthlySum = self::where('member_code', $memberCode)
+                        ->whereBetween('date', [$startOfMonth, $endOfMonth])
+                        ->whereIn('trade_type', config('custom.sales_tradeTypes'))
+                        ->sum('amount');
+                }
+                $monthlySales[] = $monthlySum;
+                $totals[$i] += $monthlySum;
+            }
+            $yearlySales[] = $monthlySales;
+        }
+
+        return [
+            'years' => $yearArr,
+            'yearlySales' => $yearlySales,
+            'totals' => $totals,
+        ];
     }
     
 

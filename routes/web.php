@@ -12,6 +12,10 @@ use App\Http\Controllers\ProductController;
 
 
 Route::get('/', function () {
+    // ログインしている場合、ダッシュボードへリダイレクト
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    }
     return view('welcome');
 });
 

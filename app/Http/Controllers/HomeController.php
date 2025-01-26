@@ -240,6 +240,16 @@ class HomeController extends Controller
         return view('member.sub', compact('user', 'groupMembers', 'groupTradings', 'currentDate'));
     }
 
+    public function show_monthly_summary() {
+        // ユーザー情報を取得
+        $users = User::getForDropdownList();
+
+        // 年数分の実績データを取得
+        $data = Trading::getMonthlySales($users);
+
+        return view('summary.monthly', compact('data'));
+    }
+
     public function show_upload() {
         return view('upload');
     }

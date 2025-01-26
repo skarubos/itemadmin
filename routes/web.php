@@ -4,7 +4,6 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FunctionsController;
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\PostingController;
 use App\Http\Controllers\ScrapingController;
 use App\Http\Controllers\TradingController;
 use App\Http\Controllers\TradeTypeController;
@@ -33,6 +32,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales', [HomeController::class, 'show_sales_home'])->name('sales');
         Route::get('/depo', [HomeController::class, 'show_depo_home'])->name('depo');
         Route::get('/upload', [HomeController::class, 'show_upload'])->name('trade.upload');
+        Route::get('/summary', [HomeController::class, 'show_monthly_summary'])->name('summary');
+
         Route::get('/admin', [HomeController::class, 'show_admin'])->name('admin');
         Route::post('/show_dashboard', [HomeController::class, 'show_dashboard'])->name('show_dashboard');
         Route::post('/refresh_member', [HomeController::class, 'refresh_member'])->name('refresh_member');

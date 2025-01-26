@@ -8,6 +8,22 @@ return [
     // 商品種別
     'product_types' => ['食品', '日用品', '化粧品', 'その他'],
 
+    // 代理店価格
+    'price_dairiten' => [
+        'above100' => 4100,
+        'less100' => 4400,
+        'karibarai' => 300,
+    ],
+    // 営業所管理手当
+    'price_eighosho' => [
+        'above80' => 3000,
+        'above40' => 2900,
+        'above20' => 2600,
+    ],
+    // 会員価格
+    'price_member' => 8500,
+
+
     // 【実績】
     // 実績の対象となる取引タイプ
     'sales_tradeTypes' => [10, 11, 12, 20, 110, 111],

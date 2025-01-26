@@ -178,7 +178,7 @@ class Trading extends Model
     }
 
     /**
-     * 指定されたメンバーコードのユーザー情報と、指定された年数分の年間売上詳細を取得する
+     * 指定されたメンバーコードのユーザー情報と、設定年数分の年間売上詳細を取得する
      *
      * @param string $memberCode
      * @return array 以下のキーを持つ連想配列を返す：
@@ -229,5 +229,75 @@ class Trading extends Model
         ];
     }
     
+    public static function getMonthlySales($users)
+    {
+        // 取得期間の設定：現在から過去12か月
+        $endDate = Carbon::now()->endOfMonth();
+        $startDate = Carbon::now()->subMonths(11)->startOfMonth();
+    
+        // 月のリストを作成
+        $months = [];
+        $currentDate = $startDate->copy();
+        while ($currentDate <= $endDate) {
+            $months[] = $currentDate->format('Y-m');
+            $currentDate->addMonth();
+        }
+    
+        // 結果を格納する配列の初期化
+        $result = [];
+        $totals = [];
+        foreach ($months as $month) {
+            $result[$month] = [];
+            $totals[$month] = [0, 0]; // [合計値, member_code:3851の合計値]
+        }
+    
+        // ユーザーのリストを取得
+        $memberNames = [];
+        foreach ($users as $user) {
+            $memberNames[$user->member_code] = $user->name;
+        }
+    
+        // データベースからデータを取得
+        $tradings = self::selectRaw("
+                member_code,
+                DATE_FORMAT(date, '%Y-%m') as month,
+                SUM(amount) as total_amount
+            ")
+            ->whereBetween('date', [$startDate, $endDate])
+            ->whereIn('trade_type', config('custom.sales_tradeTypes'))
+            ->whereIn('member_code', array_merge(array_keys($memberNames), [3851]))
+            ->groupBy('member_code', 'month')
+            ->get();
+    
+        // データの集計
+        foreach ($tradings as $trading) {
+            $month = $trading->month;
+            $code = $trading->member_code;
+            $amount = $trading->total_amount;
+    
+            if ($code == 3851) {
+                // member_code 3851 の取引は $totals の 2 番目の要素に追加
+                $totals[$month][1] += $amount;
+            } else {
+                $name = $memberNames[$code];
+    
+                // ユーザーごとの合計を設定
+                $result[$month][$name] = $amount;
+    
+                // $totals の 1 番目の要素に追加
+                $totals[$month][0] += $amount;
+            }
+        }
+    
+        // ユーザーデータを値の大きい順にソート
+        foreach ($result as $month => &$data) {
+            arsort($data);
+        }
 
+        return [
+            'monthlySales' => $result,
+            'totals' => $totals,
+        ];
+    }
+    
 }

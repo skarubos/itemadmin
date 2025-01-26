@@ -21,49 +21,77 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        // ログインユーザーのpermissionに基づいてナビゲーションバー用の配列データを共有する
         View::composer('*', function ($view) {
             $user = Auth::user();
-                     
             $navigationArray = [];
-            
+    
             if ($user) {
-                
-                $href1 = ["/sales", "/depo", "/admin", "/upload", "/setting"];
-                $activ1 = ["sales*", "depo*", "admin*", "trade*", "setting*"];
-                $text1 = ["実績", "預け", "管理用", "取引登録", "設定"];
-                $href21 = '/sales/member/' . $user->member_code;
-                $href22 = '/depo/member/' . $user->member_code;
-                $href2 = [$href21, $href22];
-                $activ2 = ["sales*", "depo*"];
-                $text2 = ["注文履歴", "預け"];
-                if($user->sub_leader != 0) {
-                    $href23 = '/sub/' . $user->member_code;
-                    array_push($href2, $href23);
-                    array_push($activ2, "sub*");
-                    array_push($text2, "資格手当");
-                }
-
+                $memberCode = $user->member_code;
+                $menus = [];
+    
                 if ($user->permission == 1) {
-                    for ($i = 0; $i < count($href1); $i++) {
-                        $navigationArray[] = [
-                            'href' => $href1[$i],
-                            'active' => $activ1[$i],
-                            'text' => $text1[$i],
-                        ];
-                    }
+                    // 管理者ユーザー向けメニュー
+                    $menus = [
+                        [
+                            'href' => '/sales',
+                            'active' => 'sales*',
+                            'text' => '実績',
+                        ],
+                        [
+                            'href' => '/depo',
+                            'active' => 'depo*',
+                            'text' => '預け',
+                        ],
+                        [
+                            'href' => '/summary',
+                            'active' => 'summary*',
+                            'text' => '会計',
+                        ],
+                        [
+                            'href' => '/admin',
+                            'active' => 'admin*',
+                            'text' => '管理用',
+                        ],
+                        [
+                            'href' => '/upload',
+                            'active' => 'trade*',
+                            'text' => '取引登録',
+                        ],
+                        [
+                            'href' => '/setting',
+                            'active' => 'setting*',
+                            'text' => '設定',
+                        ],
+                    ];
                 } elseif ($user->permission == 2) {
-                    for ($i = 0; $i < count($href2); $i++) {
-                        $navigationArray[] = [
-                            'href' => $href2[$i],
-                            'active' => $activ2[$i],
-                            'text' => $text2[$i],
+                    // 一般ユーザー向けメニュー
+                    $menus = [
+                        [
+                            'href' => "/sales/member/{$memberCode}",
+                            'active' => 'sales*',
+                            'text' => '注文履歴',
+                        ],
+                        [
+                            'href' => "/depo/member/{$memberCode}",
+                            'active' => 'depo*',
+                            'text' => '預け',
+                        ],
+                    ];
+    
+                    // サブリーダーの場合、追加のメニューを表示
+                    if ($user->sub_leader != 0) {
+                        $menus[] = [
+                            'href' => "/sub/{$memberCode}",
+                            'active' => 'sub*',
+                            'text' => '資格手当',
                         ];
                     }
                 }
+    
+                $navigationArray = $menus;
             }
-
+    
             $view->with('navigationArray', $navigationArray);
         });
-    }
+    }    
 }
